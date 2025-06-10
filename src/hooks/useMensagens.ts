@@ -8,45 +8,83 @@ export const useMensagens = (esporteId: string) => {
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated } = useAuth();
-  // Carregar mensagens de um esporte
+  const { user, isAuthenticated } = useAuth();  // Carregar mensagens de um esporte
   const carregarMensagens = useCallback(async () => {
-    if (!isAuthenticated || !esporteId) return;
+    console.log('🔄 useMensagens: carregarMensagens chamado', {
+      isAuthenticated,
+      esporteId,
+      temUsuario: !!user
+    });
+
+    if (!isAuthenticated || !esporteId) {
+      console.log('❌ useMensagens: Condições não atendidas', {
+        isAuthenticated,
+        esporteId
+      });
+      return;
+    }
     
     try {
       setIsLoading(true);
-      setError(null);
-      const data = await mensagensService.buscarMensagens(esporteId);
+      setError(null);      console.log(`🔄 Carregando mensagens para esporte: ${esporteId} (Chat Geral: ${esporteId === '0'})`);
+        const data = await mensagensService.buscarMensagens(esporteId);
+      console.log(`📨 Mensagens recebidas para esporte ${esporteId}:`, {
+        total: data.length,
+        isChatGeral: esporteId === '0',
+        mensagens: data.map(msg => ({
+          id: msg.id,
+          texto: msg.texto?.substring(0, 50) + '...',
+          remetente: msg.remetente?.nome,
+          esporteId: msg.esporteId
+        }))
+      });
+      
       // Ordenar mensagens por data (mais antigas primeiro)
       const mensagensOrdenadas = data.sort((a, b) => 
         new Date(a.criadaEm).getTime() - new Date(b.criadaEm).getTime()
       );
       setMensagens(mensagensOrdenadas);    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mensagens';
+      console.error(`❌ Erro ao carregar mensagens para esporte ${esporteId}:`, err);
       
-      // Silenciar erros de "não encontrado" pois são esperados quando o esporte não existe
-      if (!errorMessage.includes('não encontrado')) {
-        console.error('Erro ao carregar mensagens:', err);
+      // Verificar se é erro de "sem mensagens" (404) - isso é normal
+      if (errorMessage.includes('404') || errorMessage.includes('não encontrado')) {
+        console.log('📝 Nenhuma mensagem encontrada para este esporte (normal)');
+        setMensagens([]);
+        setError(null); // Não mostrar erro para situação normal
+      } else if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+        console.log('🔒 Acesso negado para este esporte (usuário não inscrito)');
+        setMensagens([]);
+        setError(null); // Não mostrar erro para situação normal
+      } else {
+        // Erro real que deve ser exibido
+        console.error('💥 Erro real ao carregar mensagens:', errorMessage);
         setError(errorMessage);
-      }
-    } finally {
+        setMensagens([]);
+      }} finally {
       setIsLoading(false);
     }
-  }, [esporteId, isAuthenticated]);
-
-  // Enviar nova mensagem
+  }, [esporteId, isAuthenticated, user]);// Enviar nova mensagem
   const enviarMensagem = useCallback(async (conteudo: string) => {
-    if (!isAuthenticated || !esporteId || !conteudo.trim()) return;
+    console.log('📤 useMensagens: Enviando mensagem', { esporteId, conteudo: conteudo?.substring(0, 50) + '...' });
+
+    if (!isAuthenticated || !esporteId || !conteudo.trim()) {
+      const motivo = !isAuthenticated ? 'não autenticado' : !esporteId ? 'sem esporteId' : 'conteúdo vazio';
+      console.log('❌ useMensagens: Envio cancelado -', motivo);
+      return;
+    }
     
     try {
       const data: CreateMensagemData = {
         esporteId,
-        conteudo: conteudo.trim()
+        texto: conteudo.trim() // Corrigido para enviar 'texto'
       };
       
       const novaMensagem = await mensagensService.enviarMensagem(data);
+      console.log('✅ useMensagens: Mensagem enviada, atualizando lista');
       setMensagens(prev => [...prev, novaMensagem]);
-      return novaMensagem;    } catch (err) {
+      return novaMensagem;
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao enviar mensagem';
       
       // Silenciar erros de "não encontrado" 
@@ -78,11 +116,16 @@ export const useMensagens = (esporteId: string) => {
     // Admin pode excluir qualquer mensagem, usuário só as próprias
     return user.role === 'admin' || mensagem.remetenteId === user.id;
   }, [user]);
-
   // Auto-carregar mensagens quando hook é inicializado ou esporteId muda
   useEffect(() => {
-    carregarMensagens();
-  }, [carregarMensagens]);
+    // Limpar mensagens ao trocar de esporte
+    setMensagens([]);
+    setError(null);
+    
+    if (esporteId) {
+      carregarMensagens();
+    }
+  }, [esporteId, carregarMensagens]);
 
   // Auto-recarregar mensagens a cada 30 segundos (polling simples)
   useEffect(() => {

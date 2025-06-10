@@ -6,7 +6,7 @@ export interface Mensagem {
   id: string;
   remetenteId: string;
   esporteId: string; // "0" para chat geral
-  conteudo: string;
+  texto: string; // Corrigido para 'texto'
   criadaEm: string;
   remetente: {
     nome: string;
@@ -16,13 +16,20 @@ export interface Mensagem {
 
 export interface CreateMensagemData {
   esporteId: string;
-  conteudo: string;
+  texto: string; // Corrigido para 'texto'
 }
 
-class MensagensService extends AtleticaHubAPI {
-  // Buscar mensagens de um esporte
+class MensagensService extends AtleticaHubAPI {  // Buscar mensagens de um esporte
   async buscarMensagens(esporteId: string): Promise<Mensagem[]> {
-    return this.request(`/api/mensagens/${esporteId}`);
+    console.log(`🌐 API: Buscando mensagens para esporte ${esporteId}`);
+    try {
+      const result = await this.request(`/api/mensagens/${esporteId}`);
+      console.log(`✅ API: Sucesso ao buscar mensagens do esporte ${esporteId}:`, result.length, 'mensagens');
+      return result;
+    } catch (error) {
+      console.error(`❌ API: Erro ao buscar mensagens do esporte ${esporteId}:`, error);
+      throw error;
+    }
   }
 
   // Enviar mensagem

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔍 Debug Mensagens Chat Geral</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #fff; }
+        .result { background: #222; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { border-left: 4px solid #0f0; }
+        .error { border-left: 4px solid #f00; }
+        .warning { border-left: 4px solid #ff0; }
+        .info { border-left: 4px solid #0ff; }
+        button { background: #0066cc; color: white; padding: 10px 16px; border: none; border-radius: 4px; margin: 5px; cursor: pointer; }
+        pre { background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Mensagens Chat Geral</h1>
+    <p>Testando especificamente o Chat Geral (esporteId: "0")</p>
+    
+    <button onclick="testarChatGeral()">🧪 Testar Chat Geral</button>
+    <button onclick="enviarMensagemTeste()">📤 Enviar Mensagem Teste</button>
+    <button onclick="verificarFiltros()">🔍 Verificar Filtros</button>
+    <button onclick="limpar()">🧹 Limpar</button>
+    
+    <div id="resultado"></div>
+
+    <script>
+        const baseURL = 'https://atleticahubapi.onrender.com';
+        let token = null;
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            document.getElementById('resultado').appendChild(div);
+            console.log(message);
+        }
+        
+        function limpar() {
+            document.getElementById('resultado').innerHTML = '';
+        }
+
+        function obterToken() {
+            if (token) return token;
+            
+            token = localStorage.getItem('athletica_token') || localStorage.getItem('authToken');
+            if (token) {
+                log(`✅ Token encontrado: ${token.substring(0, 30)}...`, 'success');
+            } else {
+                log('❌ Nenhum token encontrado! Faça login primeiro.', 'error');
+            }
+            return token;
+        }
+
+        async function testarChatGeral() {
+            const currentToken = obterToken();
+            if (!currentToken) return;
+
+            log('🔍 Testando Chat Geral (esporteId: "0")...', 'info');
+            
+            try {
+                const response = await fetch(`${baseURL}/api/mensagens/0`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`📡 Status da resposta: ${response.status} ${response.statusText}`, 'info');
+                
+                if (response.ok) {
+                    const mensagens = await response.json();
+                    log(`✅ ${mensagens.length} mensagem(ns) encontrada(s) no Chat Geral`, 'success');
+                    
+                    if (mensagens.length > 0) {
+                        log('📋 Estrutura das mensagens:', 'info');
+                        log(`<pre>${JSON.stringify(mensagens, null, 2)}</pre>`, 'info');
+                        
+                        // Análise detalhada
+                        mensagens.forEach((msg, index) => {
+                            const temTexto = msg.texto && msg.texto.trim() !== '';
+                            const temConteudo = msg.conteudo && msg.conteudo.trim() !== '';
+                            const temNomeRemetente = msg.remetente?.nome && msg.remetente.nome.trim() !== '';
+                            
+                            log(`📨 Mensagem ${index + 1}:`, 'info');
+                            log(`   ID: ${msg.id}`, 'info');
+                            log(`   EsporteId: ${msg.esporteId}`, 'info');
+                            log(`   Texto: "${msg.texto || 'VAZIO'}" ${temTexto ? '✅' : '❌'}`, temTexto ? 'success' : 'error');
+                            log(`   Conteudo: "${msg.conteudo || 'VAZIO'}" ${temConteudo ? '✅' : '❌'}`, temConteudo ? 'success' : 'error');
+                            log(`   Remetente: "${msg.remetente?.nome || 'VAZIO'}" ${temNomeRemetente ? '✅' : '❌'}`, temNomeRemetente ? 'success' : 'error');
+                            log(`   Data: ${msg.criadaEm}`, 'info');
+                            
+                            // Simular como apareceria no frontend
+                            const textoFinal = msg.texto || 'Mensagem sem conteúdo';
+                            const nomeFinal = msg.remetente?.nome || 'Usuário';
+                            
+                            if (textoFinal === 'Mensagem sem conteúdo' || nomeFinal === 'Usuário') {
+                                log(`   🐛 PROBLEMA: Mensagem apareceria como "${nomeFinal}: ${textoFinal}"`, 'error');
+                            } else {
+                                log(`   ✅ OK: Mensagem apareceria como "${nomeFinal}: ${textoFinal}"`, 'success');
+                            }
+                        });
+                    } else {
+                        log('⚠️ Nenhuma mensagem encontrada no Chat Geral', 'warning');
+                        log('💡 Isso pode ser normal se ninguém enviou mensagens ainda', 'info');
+                    }
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Erro ao buscar mensagens: ${errorText}`, 'error');
+                    
+                    if (response.status === 404) {
+                        log('💡 Erro 404 pode indicar que o Chat Geral não foi criado ainda', 'warning');
+                    } else if (response.status === 403) {
+                        log('💡 Erro 403 pode indicar problema de permissão', 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        async function enviarMensagemTeste() {
+            const currentToken = obterToken();
+            if (!currentToken) return;
+
+            const mensagemTeste = `🧪 Teste debug - ${new Date().toLocaleTimeString()}`;
+            log(`📤 Enviando mensagem teste: "${mensagemTeste}"`, 'info');
+            
+            try {
+                const response = await fetch(`${baseURL}/api/mensagens`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        esporteId: "0",
+                        texto: mensagemTeste
+                    })
+                });
+
+                log(`📡 Status: ${response.status} ${response.statusText}`, 'info');
+                
+                if (response.ok) {
+                    const novaMensagem = await response.json();
+                    log('✅ Mensagem enviada com sucesso!', 'success');
+                    log(`<pre>${JSON.stringify(novaMensagem, null, 2)}</pre>`, 'success');
+                    
+                    // Aguardar um pouco e buscar novamente
+                    setTimeout(() => {
+                        log('🔄 Verificando se a mensagem aparece na lista...', 'info');
+                        testarChatGeral();
+                    }, 1000);
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Erro ao enviar: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro de rede ao enviar: ${error.message}`, 'error');
+            }
+        }
+
+        function verificarFiltros() {
+            log('🔍 Verificando filtros do frontend...', 'info');
+            
+            // Simular dados problemáticos
+            const mensagensSimuladas = [
+                {
+                    id: "1",
+                    esporteId: "0",
+                    texto: "Mensagem normal do chat geral",
+                    remetente: { nome: "João Silva" },
+                    criadaEm: new Date().toISOString()
+                },
+                {
+                    id: "2", 
+                    esporteId: "0",
+                    texto: "",
+                    remetente: { nome: "" },
+                    criadaEm: new Date().toISOString()
+                },
+                {
+                    id: "3",
+                    esporteId: "1", // Esporte diferente
+                    texto: "Mensagem de outro esporte",
+                    remetente: { nome: "Maria Santos" },
+                    criadaEm: new Date().toISOString()
+                }
+            ];
+            
+            log('📋 Mensagens simuladas:', 'info');
+            log(`<pre>${JSON.stringify(mensagensSimuladas, null, 2)}</pre>`, 'info');
+            
+            // Simular filtro original (PROBLEMÁTICO)
+            log('🔍 Filtro original (problemático):', 'warning');
+            const filtroProblematico = mensagensSimuladas.filter(msg => msg.esporteId === "0");
+            log(`Resultado: ${filtroProblematico.length} mensagens`, filtroProblematico.length > 0 ? 'success' : 'error');
+            
+            // Simular filtro corrigido (SEM FILTRO ADICIONAL)
+            log('✅ Filtro corrigido (sem filtro extra):', 'success');
+            log(`Resultado: ${mensagensSimuladas.length} mensagens (todas da API já filtradas)`, 'success');
+            
+            log('💡 Conclusão: O problema era o filtro duplo no frontend!', 'info');
+        }
+
+        // Auto-executar ao carregar
+        window.onload = () => {
+            obterToken();
+            if (token) {
+                log('🚀 Token encontrado! Pode executar os testes.', 'success');
+            } else {
+                log('ℹ️ Faça login no AtleticaHub primeiro, depois recarregue esta página.', 'info');
+            }
+        };
+    </script>
+</body>
+</html>

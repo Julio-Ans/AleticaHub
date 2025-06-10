@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔍 Teste Campo Mensagem - Backend</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #fff; }
+        .result { background: #222; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { border-left: 4px solid #0f0; }
+        .error { border-left: 4px solid #f00; }
+        button { background: #0066cc; color: white; padding: 8px 16px; border: none; border-radius: 4px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Teste Campo Mensagem - Backend</h1>
+    <p>Vamos testar qual campo o backend espera: "texto" ou "conteudo"</p>
+    
+    <button onclick="testarComTexto()">🧪 Testar com "texto"</button>
+    <button onclick="testarComConteudo()">🧪 Testar com "conteudo"</button>
+    <button onclick="testarAmbos()">🧪 Testar com ambos</button>
+    <button onclick="limpar()">🧹 Limpar</button>
+    
+    <div id="resultado"></div>
+
+    <script>
+        const baseURL = 'https://atleticahubapi.onrender.com';
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            document.getElementById('resultado').appendChild(div);
+        }
+        
+        function limpar() {
+            document.getElementById('resultado').innerHTML = '';
+        }
+
+        async function testarComTexto() {
+            log('🧪 Testando com campo "texto"...', 'info');
+            
+            try {
+                const response = await fetch(`${baseURL}/api/mensagens`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer fake-token-para-teste'
+                    },
+                    body: JSON.stringify({
+                        esporteId: "0",
+                        texto: "Mensagem teste usando campo 'texto'"
+                    })
+                });
+
+                log(`📡 Status: ${response.status} ${response.statusText}`, 'info');
+                
+                const responseText = await response.text();
+                
+                if (response.status === 401 || response.status === 403) {
+                    log('🟡 Erro de autenticação (esperado)', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.ok) {
+                    log('✅ Sucesso! Backend aceita campo "texto"', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.status === 400) {
+                    log('❌ Erro 400 - Pode ser que backend NÃO aceite "texto"', 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                } else {
+                    log(`❓ Status inesperado: ${response.status}`, 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarComConteudo() {
+            log('🧪 Testando com campo "conteudo"...', 'info');
+            
+            try {
+                const response = await fetch(`${baseURL}/api/mensagens`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer fake-token-para-teste'
+                    },
+                    body: JSON.stringify({
+                        esporteId: "0",
+                        conteudo: "Mensagem teste usando campo 'conteudo'"
+                    })
+                });
+
+                log(`📡 Status: ${response.status} ${response.statusText}`, 'info');
+                
+                const responseText = await response.text();
+                
+                if (response.status === 401 || response.status === 403) {
+                    log('🟡 Erro de autenticação (esperado)', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.ok) {
+                    log('✅ Sucesso! Backend aceita campo "conteudo"', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.status === 400) {
+                    log('❌ Erro 400 - Pode ser que backend NÃO aceite "conteudo"', 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                } else {
+                    log(`❓ Status inesperado: ${response.status}`, 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarAmbos() {
+            log('🧪 Testando com ambos os campos...', 'info');
+            
+            try {
+                const response = await fetch(`${baseURL}/api/mensagens`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer fake-token-para-teste'
+                    },
+                    body: JSON.stringify({
+                        esporteId: "0",
+                        texto: "Mensagem com campo texto",
+                        conteudo: "Mensagem com campo conteudo"
+                    })
+                });
+
+                log(`📡 Status: ${response.status} ${response.statusText}`, 'info');
+                
+                const responseText = await response.text();
+                
+                if (response.status === 401 || response.status === 403) {
+                    log('🟡 Erro de autenticação (esperado)', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.ok) {
+                    log('✅ Sucesso! Backend aceita pelo menos um dos campos', 'success');
+                    log(`📄 Resposta: ${responseText}`, 'success');
+                } else if (response.status === 400) {
+                    log('❌ Erro 400 - Problema com os campos', 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                } else {
+                    log(`❓ Status inesperado: ${response.status}`, 'error');
+                    log(`📄 Resposta: ${responseText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
