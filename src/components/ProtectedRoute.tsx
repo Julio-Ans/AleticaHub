@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'user' | 'admin' | 'moderator';
+  requiredRole?: 'user' | 'admin';
   redirectTo?: string;
   fallback?: React.ReactNode;
 }

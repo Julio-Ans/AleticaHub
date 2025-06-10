@@ -57,21 +57,20 @@ class HttpClient {
       throw new Error('Erro de rede');
     }
   }
-
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('authToken');
+    return localStorage.getItem('athletica_token');
   }
 
   setAuthToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('athletica_token', token);
     }
   }
 
   removeAuthToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('athletica_token');
     }
   }
 

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Final API Esportes</title>
+</head>
+<body>
+    <h1>Teste Final - API Esportes</h1>
+    <div id="result"></div>
+    <div id="logs"></div>
+
+    <script>
+        const API_BASE = 'https://atleticahubapi.onrender.com';
+        const resultDiv = document.getElementById('result');
+        const logsDiv = document.getElementById('logs');
+
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += '<p>' + message + '</p>';
+        }
+
+        async function testarEsportes() {
+            log('🧪 Iniciando teste final da API de esportes...');
+            
+            try {
+                // 1. Teste direto sem auth
+                log('1️⃣ Testando GET /api/esportes SEM autenticação...');
+                const response1 = await fetch(`${API_BASE}/api/esportes`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                        // SEM Authorization header
+                    }
+                });
+                
+                log(`Status: ${response1.status} ${response1.statusText}`);
+                
+                if (response1.status === 401) {
+                    log('❌ Endpoint requer autenticação mesmo para listagem');
+                    
+                    // 2. Teste com token inválido
+                    log('2️⃣ Testando com token inválido...');
+                    const response2 = await fetch(`${API_BASE}/api/esportes`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer token_fake_123'
+                        }
+                    });
+                    
+                    log(`Status com token fake: ${response2.status} ${response2.statusText}`);
+                    
+                    if (response2.status === 401) {
+                        log('❌ PROBLEMA CONFIRMADO: A API requer autenticação VÁLIDA para listar esportes');
+                        log('📝 SOLUÇÃO: O backend precisa ser modificado para permitir acesso público à listagem');
+                        
+                        resultDiv.innerHTML = `
+                            <div style="background: #fee; border: 1px solid #f00; padding: 10px; margin: 10px 0;">
+                                <h3>❌ PROBLEMA IDENTIFICADO</h3>
+                                <p><strong>Causa raiz:</strong> O backend requer autenticação para ALL endpoints de esportes, incluindo listagem.</p>
+                                <p><strong>Evidência:</strong> Tanto sem token quanto com token inválido retornam 401.</p>
+                                <p><strong>Solução necessária:</strong> Modificar o backend para permitir GET /api/esportes sem autenticação.</p>
+                                <p><strong>Arquivo a modificar:</strong> src/routes/esporteRoutes.js - remover verificarToken do GET /</p>
+                            </div>
+                        `;
+                    }
+                } else if (response1.ok) {
+                    const data1 = await response1.json();
+                    log('✅ Sucesso! Dados recebidos sem autenticação');
+                    log(`Esportes encontrados: ${Array.isArray(data1) ? data1.length : 'Formato inválido'}`);
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #efe; border: 1px solid #0f0; padding: 10px; margin: 10px 0;">
+                            <h3>✅ PROBLEMA RESOLVIDO</h3>
+                            <p>A API agora permite acesso público à listagem de esportes!</p>
+                            <p>Esportes encontrados: ${Array.isArray(data1) ? data1.length : 'N/A'}</p>
+                        </div>
+                    `;
+                } else {
+                    log(`❓ Status inesperado: ${response1.status}`);
+                    const errorText = await response1.text();
+                    log(`Erro: ${errorText}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Erro na requisição: ${error.message}`);
+                resultDiv.innerHTML = `
+                    <div style="background: #fee; border: 1px solid #f00; padding: 10px; margin: 10px 0;">
+                        <h3>❌ ERRO DE CONEXÃO</h3>
+                        <p>Não foi possível conectar à API: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Executar teste automaticamente
+        testarEsportes();
+    </script>
+</body>
+</html>

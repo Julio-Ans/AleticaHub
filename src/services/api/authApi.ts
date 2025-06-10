@@ -1,176 +1,117 @@
-// filepath: c:\Users\julio\Downloads\AtleticaHub-FrontEnd\AleticaHub\src\services\api\authApi.ts
-// Auth API Service - Comunicação com backend para autenticação
+import AtleticaHubAPI from './baseApi';
+import { firebaseService } from '../firebase/firebaseService';
 
-import { httpClient } from './httpClient';
-
-// Types for API requests/responses
-export interface LoginRequest {
+export interface User {
+  id: string;
   email: string;
-  password: string;
+  nome: string;
+  role: 'user' | 'admin' | 'moderator';
+  dataNascimento?: string;
+  telefone?: string;
+  curso?: string;
+  status?: string;
+  createdAt?: string;
 }
 
-export interface RegisterRequest {
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
+}
+
+export interface RegisterData {
   nome: string;
   email: string;
   password: string;
   telefone: string;
   dataNascimento: string;
   curso: string;
-  codigo?: string; // Campo opcional para acesso administrativo
+  codigo?: string;
 }
 
-export interface AuthResponse {
-  user: {
-    id: string;
-    nome: string;
-    email: string;
-    role: 'user' | 'admin' | 'moderator';
-    status: 'ativo' | 'pendente' | 'suspenso';
-    telefone?: string;
-    dataNascimento?: string;
-    curso?: string;
-  };
-  token: string;
-  refreshToken?: string;
-}
-
-export interface User {
-  id: string;
-  nome: string;
-  email: string;
-  role: 'user' | 'admin' | 'moderator';
-  status: 'ativo' | 'pendente' | 'suspenso';
-  telefone?: string;
-  dataNascimento?: string;
-  curso?: string;
-}
-
-class AuthApiService {  // Login user
+class AuthAPI extends AtleticaHubAPI {
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await httpClient.post<AuthResponse>('/auth/login', { email, password });
+      console.log('🔄 Tentando login...');
       
-      // Store token for subsequent requests
-      httpClient.setAuthToken(response.token);
+      await firebaseService.initialize();
+      const idToken = await firebaseService.signIn(email, password);
+      console.log('✅ Firebase OK, enviando para backend...');
       
+      const response = await this.request<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          idToken,
+          email: email,
+          displayName: email.split('@')[0]
+        }),
+        auth: false
+      });
+      
+      this.setToken(response.token);
+      console.log('✅ Login Firebase completo!');
       return response;
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao fazer login');
+      console.error('❌ Erro no login:', error);
+      throw error;
     }
   }
 
-  // Register new user
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
+  async register(userData: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await httpClient.post<AuthResponse>('/auth/register', userData);
+      await firebaseService.initialize();
+      const idToken = await firebaseService.signUp(userData.email, userData.password);
       
-      // Store token for subsequent requests
-      httpClient.setAuthToken(response.token);
-      
+      const response = await this.request<AuthResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          idToken,
+          ...userData
+        }),
+        auth: false
+      });
+
+      this.setToken(response.token);
       return response;
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao registrar usuário');
+      console.error('Erro no registro:', error);
+      throw error;
     }
   }
 
-  // Logout user
   async logout(): Promise<void> {
     try {
-      await httpClient.post('/auth/logout');
+      await firebaseService.signOut();
+      this.removeToken();
     } catch (error) {
-      // Even if API call fails, we should remove local token
-      console.warn('Erro ao fazer logout no servidor:', error);
-    } finally {
-      httpClient.removeAuthToken();
+      console.error('Erro no logout:', error);
+      this.removeToken();
     }
   }
 
-  // Get current user profile
   async getProfile(): Promise<User> {
-    try {
-      return await httpClient.get<User>('/auth/me');
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao buscar perfil do usuário');
-    }
+    return this.request<User>('/auth/me');
   }
 
-  // Refresh authentication token
-  async refreshToken(): Promise<{ token: string }> {
-    try {
-      const response = await httpClient.post<{ token: string }>('/auth/refresh');
-      httpClient.setAuthToken(response.token);
-      return response;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao renovar token');
-    }
-  }  // Verify if user is authenticated
-  async verifyToken(): Promise<boolean> {
-    try {
-      await this.getProfile();
-      return true;
-    } catch {
-      httpClient.removeAuthToken();
-      return false;
-    }
-  }
-
-  // Update user profile
   async updateProfile(userData: Partial<User>): Promise<User> {
-    try {
-      return await httpClient.put<User>('/auth/profile', userData);
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao atualizar perfil');
+    return this.request<User>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(userData)
+    });
+  }
+
+  setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('athletica_token', token);
     }
   }
 
-  // Change password
-  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    try {
-      await httpClient.put('/auth/password', { oldPassword, newPassword });
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao alterar senha');
-    }
-  }
-
-  // Request password reset
-  async requestPasswordReset(email: string): Promise<void> {
-    try {
-      await httpClient.post('/auth/forgot-password', { email });
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao solicitar reset de senha');
-    }
-  }
-
-  // Reset password with token
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    try {
-      await httpClient.post('/auth/reset-password', { token, newPassword });
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Erro ao resetar senha');
-    }
-  }  // Check if user has specific role
-  async checkRole(requiredRole: 'user' | 'admin' | 'moderator'): Promise<boolean> {
-    try {
-      const user = await this.getProfile();
-      return user.role === requiredRole || (requiredRole === 'user' && ['admin', 'moderator'].includes(user.role));
-    } catch {
-      return false;
-    }
-  }
-
-  // Get current authentication token
-  getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('authToken');
-  }
-
-  // Check if user is authenticated (token exists)
-  isAuthenticated(): boolean {
-    if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('authToken');
+  initializeToken(): void {
+    console.log('Token initialization delegated to Firebase');
   }
 }
 
-// Export singleton instance
-export const authApi = new AuthApiService();
+export const authApi = new AuthAPI();
 export default authApi;

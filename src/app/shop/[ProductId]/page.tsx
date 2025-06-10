@@ -1,67 +1,134 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { FaHome, FaShoppingCart } from 'react-icons/fa';
+import Image from 'next/image';
+import { FaHome, FaShoppingCart, FaImage, FaArrowLeft } from 'react-icons/fa';
 import { useCart } from '@/context/CartContext';
+import { produtosService, type Produto } from '@/services/api';
 
-export default function ProductPage({ params }: { params: { id: string } }) {
+export default function ProductPage() {
+  const params = useParams();
+  const [produto, setProduto] = useState<Produto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
-  // Mock de dados do produto
-  const product = {
-    id: params.id,
-    name: `Produto ${params.id}`,
-    price: 89.90,
-    description: 'Descrição detalhada do produto. Material, cuidados, etc.',
-    sizes: ['P', 'M', 'G', 'GG'],
-  };
+  const productId = Array.isArray(params.ProductId) ? params.ProductId[0] : params.ProductId;
 
-  const handleAddToCart = () => {
-    if (!selectedSize) return;
+  useEffect(() => {
+    const carregarProduto = async () => {
+      if (!productId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await produtosService.buscarProduto(productId);
+        setProduto(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar produto');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarProduto();
+  }, [productId]);
+
+  if (!productId) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
+          <p className="text-red-500">Produto não encontrado</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !produto) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link href="/shop" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400">
+            <FaArrowLeft />
+            Voltar para Loja
+          </Link>
+        </div>
+        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
+          <p className="text-red-500">{error || 'Produto não encontrado'}</p>
+        </div>
+      </div>
+    );
+  }  const handleAddToCart = () => {
+    if (!selectedSize || !produto) return;
     
     addToCart({
-      id: `${product.id}-${selectedSize}`,
-      productId: product.id,
-      name: product.name,
-      price: product.price,
+      productId: produto.id.toString(), // Converte para string
+      name: produto.nome,
+      price: produto.preco,
       size: selectedSize,
       quantity,
     });
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6 flex justify-between items-center">
-        <Link href="/home" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400">
-          <FaHome />
-          Voltar para Home
+    <div className="max-w-2xl mx-auto">      <div className="mb-6 flex justify-between items-center">
+        <Link href="/shop" className="inline-flex items-center gap-2 text-red-500 hover:text-red-400">
+          <FaArrowLeft />
+          Voltar para Loja
         </Link>
-        <Link href="/cart" className="flex items-center gap-2 text-red-500 hover:text-red-400">
-          <FaShoppingCart />
-          Carrinho
-        </Link>
+        <div className="flex gap-4">
+          <Link href="/home" className="inline-flex items-center gap-2 text-gray-400 hover:text-gray-300">
+            <FaHome />
+            Home
+          </Link>
+          <Link href="/cart" className="flex items-center gap-2 text-red-500 hover:text-red-400">
+            <FaShoppingCart />
+            Carrinho
+          </Link>
+        </div>
       </div>
 
-      <div className="bg-gray-900 p-6 rounded-lg shadow border border-gray-800">
-        <div className="h-64 bg-gray-800 rounded mb-6 flex items-center justify-center">
-          <span className="text-gray-500">Imagem do Produto {product.id}</span>
+      <div className="bg-gray-900 p-6 rounded-lg shadow border border-gray-800">        <div className="h-64 bg-gray-800 rounded mb-6 flex items-center justify-center relative overflow-hidden">
+          {(produto.fotoUrl || produto.imagemUrl) ? (
+            <Image 
+              src={produto.fotoUrl || produto.imagemUrl || ''} 
+              alt={produto.nome}
+              fill
+              className="object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <FaImage className="text-6xl text-gray-600" />
+          )}
         </div>
         
-        <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
-        <p className="text-red-500 text-xl font-bold mb-4">R$ {product.price.toFixed(2)}</p>
+        <h1 className="text-2xl font-bold mb-2">{produto.nome}</h1>
+        <p className="text-red-500 text-xl font-bold mb-4">R$ {produto.preco.toFixed(2)}</p>
         
         <div className="mb-6">
           <h3 className="font-semibold mb-2">Descrição</h3>
-          <p className="text-gray-300">{product.description}</p>
+          <p className="text-gray-300">{produto.descricao}</p>
         </div>
-        
-        <div className="mb-6">
+          <div className="mb-6">
           <h3 className="font-semibold mb-2">Tamanhos</h3>
           <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
+            {['P', 'M', 'G', 'GG'].map((size: string) => (
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}

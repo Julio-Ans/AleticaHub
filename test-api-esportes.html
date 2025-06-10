@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste API Esportes</title>
+</head>
+<body>
+    <h1>Teste API Esportes</h1>
+    <button onclick="testarAPI()">Testar API</button>
+    <div id="resultado"></div>
+
+    <script>
+        async function testarAPI() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = 'Testando...';
+            
+            try {
+                console.log('🧪 Testando API de Esportes...');
+                
+                const response = await fetch('https://atleticahubapi.onrender.com/api/esportes', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('📊 Status:', response.status);
+                console.log('📋 Headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Dados recebidos:', data);
+                    resultado.innerHTML = `
+                        <h2>✅ Sucesso!</h2>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Quantidade de esportes:</strong> ${data.length || 'N/A'}</p>
+                        <p><strong>Dados:</strong></p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    console.log('❌ Erro:', errorText);
+                    resultado.innerHTML = `
+                        <h2>❌ Erro</h2>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Erro:</strong> ${errorText}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro na requisição:', error);
+                resultado.innerHTML = `
+                    <h2>❌ Erro de Rede</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

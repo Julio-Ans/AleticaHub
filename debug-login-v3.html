@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login v3</title>
+</head>
+<body>
+    <h1>Debug do Sistema de Login - Versão 3</h1>
+    
+    <div>
+        <h3>Teste de Login Manual</h3>
+        <input type="email" id="email" placeholder="Email" value="teste@example.com">
+        <input type="password" id="password" placeholder="Password" value="123456">
+        <button onclick="testarLoginCompleto()">Testar Login</button>
+        <button onclick="limparTudo()">Limpar localStorage</button>
+    </div>
+    
+    <div>
+        <h3>Status do localStorage</h3>
+        <button onclick="verificarLocalStorage()">Verificar localStorage</button>
+        <div id="localstorage-status"></div>
+    </div>
+    
+    <div id="debug-output" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('debug-output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `[${timestamp}] ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+        
+        function limparTudo() {
+            localStorage.clear();
+            document.getElementById('debug-output').innerHTML = '';
+            verificarLocalStorage();
+            log('🧹 localStorage limpo');
+        }
+        
+        function verificarLocalStorage() {
+            const items = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                items[key] = key.includes('token') ? value.substring(0, 50) + '...' : value;
+            }
+            
+            document.getElementById('localstorage-status').innerHTML = `
+                <pre>${JSON.stringify(items, null, 2)}</pre>
+            `;
+        }
+        
+        async function testarLoginCompleto() {
+            log('🚀 INICIANDO TESTE DE LOGIN COMPLETO...');
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                // 1. Verificar configuração Firebase
+                log('1️⃣ Verificando configuração do Firebase...');
+                
+                try {
+                    const firebaseConfigResponse = await fetch('https://atleticahubapi.onrender.com/config/firebase');
+                    if (firebaseConfigResponse.ok) {
+                        const firebaseConfig = await firebaseConfigResponse.json();
+                        log('✅ Configuração Firebase OK');
+                        log(`   Project ID: ${firebaseConfig.projectId}`);
+                    } else {
+                        log('❌ Erro ao obter configuração Firebase');
+                        log(`   Status: ${firebaseConfigResponse.status}`);
+                    }
+                } catch (e) {
+                    log('❌ Erro de rede ao acessar Firebase config');
+                }
+                
+                // 2. Tentar login direto (fake token)
+                log('\n2️⃣ Testando login direto no backend...');
+                
+                const fakeIdToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y2QwYTcwNjA2MDJjZGI4YTQiLCJ0eXAiOiJKV1QifQ.test-token';
+                
+                try {
+                    const loginResponse = await fetch('https://atleticahubapi.onrender.com/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            idToken: fakeIdToken,
+                            email: email,
+                            displayName: 'Usuário Teste'
+                        })
+                    });
+                    
+                    log(`   Response Status: ${loginResponse.status}`);
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        log('✅ Login backend SUCCESS!');
+                        log(`   Token recebido: ${loginData.token ? 'SIM' : 'NÃO'}`);
+                        log(`   User: ${loginData.user ? loginData.user.nome || loginData.user.email : 'N/A'}`);
+                        
+                        if (loginData.token) {
+                            // Salvar token
+                            localStorage.setItem('authToken', loginData.token);
+                            localStorage.setItem('athletica_token', loginData.token);
+                            log('✅ Token salvo no localStorage');
+                            
+                            // Testar API esportes
+                            log('\n3️⃣ Testando API esportes...');
+                            
+                            const esportesResponse = await fetch('https://atleticahubapi.onrender.com/api/esportes', {
+                                headers: {
+                                    'Authorization': `Bearer ${loginData.token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            log(`   Esportes Response: ${esportesResponse.status}`);
+                            
+                            if (esportesResponse.ok) {
+                                const esportesData = await esportesResponse.json();
+                                log('✅ API Esportes SUCCESS!');
+                                log(`   Quantidade de esportes: ${esportesData.length}`);
+                                if (esportesData.length > 0) {
+                                    log(`   Primeiro esporte: ${esportesData[0].nome}`);
+                                }
+                            } else {
+                                const esportesError = await esportesResponse.text();
+                                log('❌ API Esportes FAILED');
+                                log(`   Erro: ${esportesError}`);
+                            }
+                        }
+                    } else {
+                        const loginError = await loginResponse.text();
+                        log('❌ Login backend FAILED');
+                        log(`   Erro: ${loginError}`);
+                    }
+                } catch (e) {
+                    log('❌ Erro de rede no login');
+                    log(`   Detalhes: ${e.message}`);
+                }
+                
+            } catch (error) {
+                log(`❌ ERRO GERAL: ${error.message}`);
+            }
+            
+            // Atualizar localStorage
+            verificarLocalStorage();
+            log('\n🏁 TESTE CONCLUÍDO');
+        }
+        
+        // Verificar localStorage ao carregar
+        verificarLocalStorage();
+    </script>
+</body>
+</html>

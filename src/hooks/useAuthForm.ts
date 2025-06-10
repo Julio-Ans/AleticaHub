@@ -95,9 +95,7 @@ export const useAuthForm = () => {
     if (cursoError) formErrors.curso = cursoError;
 
     return formErrors;
-  };
-
-  const handleLogin = async (formData: LoginForm) => {
+  };  const handleLogin = async (formData: LoginForm) => {
     setIsLoading(true);
     setErrors({});
 
@@ -111,8 +109,9 @@ export const useAuthForm = () => {
 
       // Attempt login
       const result = await login(formData.email, formData.password);
+      
       // Redireciona conforme o papel do usuário
-      if (result && result.user && result.user.role === 'admin') {
+      if (result?.user?.role === 'admin') {
         router.push('/admin-dashboard');
       } else {
         router.push('/home');
@@ -127,7 +126,6 @@ export const useAuthForm = () => {
       setIsLoading(false);
     }
   };
-
   const handleRegister = async (formData: RegisterForm) => {
     setIsLoading(true);
     setErrors({});

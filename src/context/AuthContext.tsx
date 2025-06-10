@@ -4,26 +4,17 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { authApi, AuthResponse, User } from '../services/api/authApi';
+import { authApi, AuthResponse, User, RegisterData } from '../services/api/authApi';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (userData: RegisterData) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   updateProfile: (userData: Partial<User>) => Promise<void>;
   checkRole: (role: 'user' | 'admin' | 'moderator') => boolean;
-}
-
-interface RegisterData {
-  nome: string;
-  email: string;
-  password: string;
-  telefone: string;
-  dataNascimento: string;
-  curso: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,52 +33,74 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check if user is authenticated on app start
+  const [isLoading, setIsLoading] = useState(true);  // Check if user is authenticated on app start
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (authApi.isAuthenticated()) {
-          const userProfile = await authApi.getProfile();
-          setUser(userProfile);
+        console.log('🚀 Verificando autenticação inicial...');
+          // Verificar se há usuário logado no Firebase
+        try {
+          const { firebaseService } = await import('../services/firebase/firebaseService');
+          await firebaseService.initialize();
+          
+          if (firebaseService.isSignedIn()) {
+            console.log('🔑 Usuário Firebase encontrado');
+            // Definir usuário temporário - dados reais serão carregados quando necessário
+            setUser({ id: 'firebase-user', email: 'user@firebase.com', nome: 'Usuário Firebase', role: 'user' } as User);
+          } else {
+            console.log('ℹ️ Nenhum usuário Firebase encontrado');
+            setUser(null);
+          }
+        } catch (firebaseError) {
+          console.log('⚠️ Erro ao verificar Firebase:', firebaseError);
+          setUser(null);
         }
       } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        // If verification fails, remove invalid token
-        authApi.logout();
+        console.error('❌ Erro na verificação inicial:', error);
+        setUser(null);
       } finally {
+        console.log('🏁 Verificação inicial concluída');
         setIsLoading(false);
       }
     };
 
-    initAuth();
+    // Adicionar delay para evitar problemas de hidratação
+    const timer = setTimeout(initAuth, 100);
+    return () => clearTimeout(timer);
   }, []);
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string): Promise<AuthResponse> => {
     try {
       setIsLoading(true);
+      console.log('🔄 Iniciando login...');
 
-      // Login diretamente com a API de backend
-      const response: AuthResponse = await authApi.login(email, password);
+      const response = await authApi.login(email, password);
+      console.log('✅ Login bem-sucedido:', response.user.nome);
+      
+      // Garantir que o token foi salvo
+      if (response.token) {
+        authApi.setToken(response.token);
+        console.log('🔑 Token salvo no localStorage');
+      }
+      
       setUser(response.user);
-
-      // Store token in local storage for persistent sessions
-      localStorage.setItem('authToken', response.token);
+      return response;
     } catch (error) {
+      console.error('❌ Erro no login:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
-  const register = async (userData: RegisterData): Promise<void> => {
+
+  const register = async (userData: RegisterData): Promise<AuthResponse> => {
     try {
       setIsLoading(true);
-      const response: AuthResponse = await authApi.register(userData);
+      const response = await authApi.register(userData);
       setUser(response.user);
 
-      // Store token in local storage for persistent sessions
-      localStorage.setItem('authToken', response.token);
+      return response;
     } catch (error) {
+      console.error('Erro no registro:', error);
       throw error;
     } finally {
       setIsLoading(false);
