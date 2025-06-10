@@ -38,21 +38,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initAuth = async () => {
       try {
         console.log('🚀 Verificando autenticação inicial...');
-          // Verificar se há usuário logado no Firebase
+        
+        // Primeiro, tentar carregar usuário pelo token salvo
         try {
-          const { firebaseService } = await import('../services/firebase/firebaseService');
-          await firebaseService.initialize();
+          authApi.initializeToken();
+          const storedToken = typeof window !== 'undefined' ? 
+            localStorage.getItem('authToken') || localStorage.getItem('athletica_token') : null;
           
-          if (firebaseService.isSignedIn()) {
-            console.log('🔑 Usuário Firebase encontrado');
-            // Definir usuário temporário - dados reais serão carregados quando necessário
-            setUser({ id: 'firebase-user', email: 'user@firebase.com', nome: 'Usuário Firebase', role: 'user' } as User);
+          if (storedToken) {
+            console.log('🔑 Token encontrado no localStorage, verificando validade...');
+            authApi.setToken(storedToken);
+            
+            // Tentar obter perfil do usuário para confirmar token válido
+            const userProfile = await authApi.getProfile();
+            console.log('✅ Usuário autenticado encontrado:', userProfile.nome);
+            setUser(userProfile);
           } else {
-            console.log('ℹ️ Nenhum usuário Firebase encontrado');
+            console.log('ℹ️ Nenhum token encontrado no localStorage');
             setUser(null);
           }
-        } catch (firebaseError) {
-          console.log('⚠️ Erro ao verificar Firebase:', firebaseError);
+        } catch (tokenError) {
+          console.log('⚠️ Token inválido ou expirado, limpando...', tokenError);
+          // Limpar tokens inválidos
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('athletica_token');
+          }
           setUser(null);
         }
       } catch (error) {

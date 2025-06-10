@@ -16,24 +16,17 @@ export const useMensagens = (esporteId: string) => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('📡 useMensagens: Carregando mensagens para esporte:', esporteId);
       const data = await mensagensService.buscarMensagens(esporteId);
-      
-      // Ordenar mensagens por data de criação (mais antigas primeiro)
+      // Ordenar mensagens por data (mais antigas primeiro)
       const mensagensOrdenadas = data.sort((a, b) => 
         new Date(a.criadaEm).getTime() - new Date(b.criadaEm).getTime()
       );
-      
-      setMensagens(mensagensOrdenadas);
-      console.log('✅ useMensagens: Mensagens carregadas e ordenadas:', mensagensOrdenadas.length);
-    } catch (err) {
-      console.error('❌ useMensagens: Erro ao carregar mensagens:', err);
+      setMensagens(mensagensOrdenadas);    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mensagens';
       
-      // Verificar se é erro de esporte não encontrado
-      if (errorMessage.includes('esporte não encontrado') || errorMessage.includes('not found')) {
-        setError('Este esporte não está disponível ou você não tem permissão para acessar o chat.');
-      } else {
+      // Silenciar erros de "não encontrado" pois são esperados quando o esporte não existe
+      if (!errorMessage.includes('não encontrado')) {
+        console.error('Erro ao carregar mensagens:', err);
         setError(errorMessage);
       }
     } finally {
@@ -50,20 +43,17 @@ export const useMensagens = (esporteId: string) => {
         esporteId,
         conteudo: conteudo.trim()
       };
-        const novaMensagem = await mensagensService.enviarMensagem(data);
       
-      // Adicionar nova mensagem mantendo a ordem cronológica
-      setMensagens(prev => {
-        const novaLista = [...prev, novaMensagem];
-        return novaLista.sort((a, b) => 
-          new Date(a.criadaEm).getTime() - new Date(b.criadaEm).getTime()
-        );
-      });
+      const novaMensagem = await mensagensService.enviarMensagem(data);
+      setMensagens(prev => [...prev, novaMensagem]);
+      return novaMensagem;    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao enviar mensagem';
       
-      return novaMensagem;
-    } catch (err) {
-      console.error('❌ useMensagens: Erro ao enviar mensagem:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao enviar mensagem');
+      // Silenciar erros de "não encontrado" 
+      if (!errorMessage.includes('não encontrado')) {
+        console.error('Erro ao enviar mensagem:', err);
+        setError(errorMessage);
+      }
       throw err;
     }
   }, [esporteId, isAuthenticated]);

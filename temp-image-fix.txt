@@ -1,0 +1,27 @@
+                    <div className="h-32 bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                      {esporte.fotoUrl ? (
+                        <img 
+                          src={esporte.fotoUrl} 
+                          alt={esporte.nome}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onLoad={() => {
+                            console.log('✅ Dashboard - Imagem carregada com sucesso:', esporte.nome, esporte.fotoUrl);
+                          }}
+                          onError={(e) => {
+                            console.log('❌ Dashboard - Erro ao carregar imagem:', esporte.nome, esporte.fotoUrl);
+                            e.currentTarget.style.display = 'none';
+                            // Mostrar fallback
+                            const fallback = document.getElementById(`fallback-${esporte.id}`);
+                            if (fallback) {
+                              fallback.classList.remove('hidden');
+                              fallback.classList.add('flex');
+                            }
+                          }}
+                        />
+                      ) : null}
+                      {/* Ícone de fallback sempre visível quando não há imagem ou há erro */}
+                      <div className={`absolute inset-0 flex items-center justify-center ${esporte.fotoUrl ? 'hidden' : 'flex'}`} id={`fallback-${esporte.id}`}>
+                        <FaImage className="text-3xl text-gray-500" />
+                      </div>
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
+                    </div>

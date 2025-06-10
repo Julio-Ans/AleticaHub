@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 Teste Exato Dashboard - Réplica</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #030712; 
+            color: #fff; 
+            padding: 20px; 
+            margin: 0;
+        }
+        
+        /* Estilos idênticos ao dashboard */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+        .bg-gray-800 { background-color: #1f2937; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .border-gray-700 { border: 1px solid #374151; }
+        .overflow-hidden { overflow: hidden; }
+        .group { }
+        .group:hover .group-hover\:border-red-500 { border-color: #ef4444; }
+        .group:hover .group-hover\:scale-110 { transform: scale(1.1); }
+        .h-32 { height: 8rem; }
+        .bg-gray-700 { background-color: #374151; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .relative { position: relative; }
+        .absolute { position: absolute; }
+        .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .object-cover { object-fit: cover; }
+        .transition-transform { transition: transform 0.3s; }
+        .duration-300 { transition-duration: 300ms; }
+        .hidden { display: none; }
+        .text-gray-500 { color: #6b7280; }
+        .text-3xl { font-size: 1.875rem; }
+        .p-4 { padding: 1rem; }
+        .font-bold { font-weight: 700; }
+        .text-white { color: #fff; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .text-sm { font-size: 0.875rem; }
+        .gap-1 { gap: 0.25rem; }
+        
+        .result { background: #222; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { border-left: 4px solid #0f0; }
+        .error { border-left: 4px solid #f00; }
+        .warning { border-left: 4px solid #ff0; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Teste Exato Dashboard - Réplica das Imagens</h1>
+    <button onclick="carregarEsportes()">🔄 Carregar Esportes</button>
+    <button onclick="limpar()">🧹 Limpar</button>
+    
+    <div id="logs"></div>
+    <div id="esportes-container"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `result ${type}`;
+            logDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            console.log(message);
+        }
+
+        function limpar() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('esportes-container').innerHTML = '';
+        }
+
+        async function carregarEsportes() {
+            limpar();
+            log('🚀 Carregando esportes...');
+
+            try {
+                const response = await fetch('https://atleticahubapi.onrender.com/api/esportes');
+                
+                if (!response.ok) {
+                    throw new Error(`API HTTP ${response.status}`);
+                }
+                
+                const esportes = await response.json();
+                log(`✅ ${esportes.length} esportes carregados`, 'success');
+
+                // Filtrar exatamente como no dashboard
+                const esportesFiltrados = esportes
+                    .filter((esporte) => esporte.nome.toLowerCase() !== 'geral' && esporte.id !== '0')
+                    .slice(0, 6);
+
+                log(`📋 ${esportesFiltrados.length} esportes após filtro`, 'success');
+
+                const container = document.getElementById('esportes-container');
+                
+                if (esportesFiltrados.length === 0) {
+                    container.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 2rem;">Nenhum esporte disponível no momento</p>';
+                    return;
+                }
+
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'grid';
+                
+                esportesFiltrados.forEach(esporte => {
+                    log(`🏃 Processando: ${esporte.nome} - ${esporte.fotoUrl ? 'Com imagem' : 'Sem imagem'}`);
+                    
+                    const link = document.createElement('a');
+                    link.href = `/sports/${esporte.id}`;
+                    link.className = 'bg-gray-800 rounded-lg border-gray-700 overflow-hidden group';
+                    
+                    // Container da imagem - IDÊNTICO ao dashboard
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'h-32 bg-gray-700 flex items-center justify-center relative overflow-hidden';
+                    
+                    if (esporte.fotoUrl) {
+                        log(`🖼️ Criando imagem para: ${esporte.nome}`);
+                        
+                        const img = document.createElement('img');
+                        img.src = esporte.fotoUrl;
+                        img.alt = esporte.nome;
+                        img.className = 'absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-300';
+                        img.crossOrigin = 'anonymous';
+                        
+                        img.onload = function() {
+                            log(`✅ SUCESSO: ${esporte.nome}`, 'success');
+                        };
+                        
+                        img.onerror = function() {
+                            log(`❌ ERRO: ${esporte.nome} - ${esporte.fotoUrl}`, 'error');
+                            this.style.display = 'none';
+                            const fallback = document.getElementById(`fallback-${esporte.id}`);
+                            if (fallback) {
+                                fallback.classList.remove('hidden');
+                                fallback.classList.add('flex');
+                            }
+                        };
+                        
+                        imageContainer.appendChild(img);
+                    }
+                    
+                    // Fallback icon - IDÊNTICO ao dashboard
+                    const fallbackDiv = document.createElement('div');
+                    fallbackDiv.className = `absolute inset-0 flex items-center justify-center ${esporte.fotoUrl ? 'hidden' : 'flex'}`;
+                    fallbackDiv.id = `fallback-${esporte.id}`;
+                    fallbackDiv.innerHTML = '<span style="font-size: 1.875rem; color: #6b7280;">🖼️</span>';
+                    
+                    imageContainer.appendChild(fallbackDiv);
+                    
+                    // Info do esporte
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'p-4';
+                    infoDiv.innerHTML = `
+                        <h3 class="font-bold text-white mb-2">${esporte.nome}</h3>
+                        <div class="flex items-center gap-1 text-gray-500 text-sm">
+                            <span>👥</span>
+                            <span>${esporte.inscricoes?.filter(i => i.status === 'aceito').length || 0} membros</span>
+                        </div>
+                    `;
+                    
+                    link.appendChild(imageContainer);
+                    link.appendChild(infoDiv);
+                    gridDiv.appendChild(link);
+                });
+
+                container.appendChild(gridDiv);
+
+            } catch (error) {
+                log(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        // Carregar automaticamente
+        window.onload = () => {
+            setTimeout(carregarEsportes, 1000);
+        };
+    </script>
+</body>
+</html>

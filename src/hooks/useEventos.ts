@@ -141,17 +141,50 @@ export const useEventos = () => {
   const estaInscrito = (eventoId: string | number): boolean => {
     const id = eventoId.toString();
     return meusEventos.some(evento => evento._id?.toString() === id);
-  };  // Carregar eventos no mount
+  };  // Carregar eventos no mount - FORÇAR carregamento imediato
   useEffect(() => {
-    carregarEventos();
+    console.log('🚀 useEventos: Iniciando carregamento FORÇADO de eventos');
+    
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('📡 Fazendo chamada para API de eventos...');
+        const data = await eventosService.listarEventos();
+        console.log('✅ Eventos carregados com sucesso:', data.length, data);
+        setEventos(data);
+      } catch (err) {
+        console.error('❌ Erro ao carregar eventos:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao carregar eventos');
+        // Em caso de erro, tentar novamente após um delay
+        setTimeout(() => {
+          console.log('🔄 Tentando recarregar eventos após erro...');
+          loadData();
+        }, 2000);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Carregar IMEDIATAMENTE ao montar o componente
+    loadData();
+    
     // Só carregar meus eventos se realmente está autenticado E tem dados do usuário
     if (isAuthenticated && user?.id) {
       console.log('🚀 useEventos: Carregando meus eventos para usuário autenticado');
-      carregarMeusEventos();
+      const loadMyEvents = async () => {
+        try {
+          const minhaParticipacao = await eventosService.meusEventos();
+          setMeusEventos(minhaParticipacao);
+        } catch (err) {
+          console.error('❌ Erro ao carregar meus eventos:', err);
+        }
+      };
+      loadMyEvents();
     } else {
       console.log('⏳ useEventos: Aguardando autenticação completa para meus eventos');
     }
-  }, [isAuthenticated, user?.id, carregarEventos, carregarMeusEventos]);
+  }, [isAuthenticated, user?.id]); // Sem dependências de callbacks
   // Carregar eventos de um esporte específico
   const carregarEventosPorEsporte = useCallback(async (esporteId: string | number) => {
     try {
@@ -182,8 +215,29 @@ export const useEventos = () => {
       throw err;
     } finally {
       setIsLoading(false);
-    }
-  }, []);
+    }  }, []);
+  // Carregar eventos no mount - é público, não precisa de auth
+  useEffect(() => {
+    console.log('📅 useEventos iniciando - carregando eventos');
+    
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('Carregando eventos...');
+        const data = await eventosService.listarEventos();
+        console.log('✅ Eventos carregados com sucesso:', data.length);
+        setEventos(data);
+      } catch (err) {
+        console.error('❌ Erro ao carregar eventos:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao carregar eventos');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []); // Sem dependências para carregar apenas uma vez no mount
 
   return {
     eventos,

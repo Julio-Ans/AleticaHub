@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Dashboard - Carregamento Automático</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; padding: 20px; }
+        .result { background: #222; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { border-left: 4px solid #0f0; }
+        .error { border-left: 4px solid #f00; }
+        .warning { border-left: 4px solid #ff0; }
+        pre { background: #000; padding: 10px; overflow-x: auto; white-space: pre-wrap; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #444; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🏠 Teste Dashboard - Carregamento Automático</h1>
+    <button onclick="testarDashboard()">🧪 Testar Dashboard</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const logDiv = document.createElement('div');
+            logDiv.className = `result ${type}`;
+            logDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            resultsDiv.appendChild(logDiv);
+            console.log(message);
+        }
+
+        async function testarDashboard() {
+            document.getElementById('results').innerHTML = '';
+            log('🚀 Iniciando teste do dashboard...');
+
+            // Teste 1: Verificar se a API de esportes funciona
+            try {
+                log('1️⃣ Testando API de esportes...');
+                const esportesResponse = await fetch('https://atleticahubapi.onrender.com/api/esportes');
+                
+                if (!esportesResponse.ok) {
+                    throw new Error(`API Esportes HTTP ${esportesResponse.status}`);
+                }
+                
+                const esportes = await esportesResponse.json();
+                log(`✅ API Esportes OK - ${esportes.length} esportes encontrados`, 'success');
+                
+                // Verificar se há imagens
+                const esportesComImagem = esportes.filter(e => e.fotoUrl);
+                log(`🖼️ Esportes com imagem: ${esportesComImagem.length}/${esportes.length}`, 
+                    esportesComImagem.length > 0 ? 'success' : 'warning');
+                
+                // Listar esportes
+                esportes.forEach((esporte, index) => {
+                    log(`   ${index + 1}. ${esporte.nome} - ${esporte.fotoUrl ? '🖼️ Com imagem' : '❌ Sem imagem'}`);
+                });
+                
+            } catch (error) {
+                log(`❌ Erro na API de esportes: ${error.message}`, 'error');
+            }
+
+            // Teste 2: Verificar se a API de eventos funciona
+            try {
+                log('2️⃣ Testando API de eventos...');
+                const eventosResponse = await fetch('https://atleticahubapi.onrender.com/api/eventos');
+                
+                if (!eventosResponse.ok) {
+                    throw new Error(`API Eventos HTTP ${eventosResponse.status}`);
+                }
+                
+                const eventos = await eventosResponse.json();
+                log(`✅ API Eventos OK - ${eventos.length} eventos encontrados`, 'success');
+                
+            } catch (error) {
+                log(`❌ Erro na API de eventos: ${error.message}`, 'error');
+            }
+
+            // Teste 3: Verificar conectividade geral
+            try {
+                log('3️⃣ Testando conectividade com o dashboard...');
+                const dashboardResponse = await fetch('http://localhost:3001/home');
+                
+                if (dashboardResponse.ok) {
+                    log('✅ Dashboard acessível', 'success');
+                } else {
+                    log(`⚠️ Dashboard retornou status ${dashboardResponse.status}`, 'warning');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro ao acessar dashboard: ${error.message}`, 'error');
+            }
+
+            log('🏁 Teste concluído!');
+        }
+
+        // Executar teste automaticamente
+        window.onload = () => {
+            setTimeout(testarDashboard, 1000);
+        };
+    </script>
+</body>
+</html>

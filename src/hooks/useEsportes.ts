@@ -16,9 +16,11 @@ export const useEsportes = () => {
       
       const data = await esportesService.listarEsportes();
       setEsportes(data);
+      console.log('✅ Esportes recarregados:', data.length);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar esportes';
       setError(errorMessage);
+      console.error('❌ Erro ao carregar esportes:', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -80,11 +82,35 @@ export const useEsportes = () => {
     } finally {
       setIsLoading(false);
     }
-  };  // Carregar esportes no mount - é público, não precisa de auth
+  };  // Carregar esportes no mount - FORÇAR carregamento imediato
   useEffect(() => {
-    console.log('🏃 useEsportes iniciando - carregando esportes');
-    carregarEsportes();
-  }, [carregarEsportes]);
+    console.log('🏃 useEsportes iniciando - carregando esportes FORÇADAMENTE');
+    
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('📡 Fazendo chamada para API de esportes...');
+        const data = await esportesService.listarEsportes();
+        console.log('✅ Esportes carregados com sucesso:', data.length, data);
+        setEsportes(data);
+      } catch (err) {
+        console.error('❌ Erro ao carregar esportes:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar esportes';
+        setError(errorMessage);
+        // Em caso de erro, tentar novamente após um delay
+        setTimeout(() => {
+          console.log('🔄 Tentando recarregar esportes após erro...');
+          loadData();
+        }, 2000);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Carregar IMEDIATAMENTE ao montar o componente
+    loadData();
+  }, []); // Sem dependências para carregar apenas uma vez no mount
 
   return {
     esportes,

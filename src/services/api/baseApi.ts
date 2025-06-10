@@ -96,20 +96,24 @@ class AtleticaHubAPI {
         } catch {
           // Se não conseguir parsear JSON, usar mensagem padrão
         }
-        
-        if (response.status === 401) {
+          if (response.status === 401) {
           errorMessage = 'Token ausente ou inválido';
         }
         
-        console.error(`❌ API Error: ${errorMessage}`);
+        // Silenciar erros comuns que não são problemas reais
+        if (!errorMessage.includes('não encontrado')) {
+          console.error(`❌ API Error: ${errorMessage}`);
+        }
         throw new Error(errorMessage);
       }
       
       const result = await response.json();
-      console.log(`✅ API Success: ${options.method || 'GET'} ${url}`);
       return result;
     } catch (error) {
-      console.error(`❌ API Exception: ${error}`);
+      // Silenciar logs de erro para requisições que falham por motivos esperados
+      if (!(error instanceof Error && error.message.includes('não encontrado'))) {
+        console.error(`❌ API Exception: ${error}`);
+      }
       throw error;
     }
   }
