@@ -7,6 +7,18 @@ import { useMensagens } from '@/hooks/useMensagens';
 import { useInscricoes } from '@/hooks/useInscricoes';
 import { Esporte } from '@/services/api';
 
+interface Mensagem {
+  id: string;
+  texto?: string;
+  conteudo?: string;
+  remetente?: { nome: string };
+  usuario?: { nome: string };
+  remetenteId?: string;
+  criadaEm: string;
+  editada?: boolean;
+  fixada?: boolean;
+}
+
 interface ModalMensagensProps {
   isOpen: boolean;
   onClose: () => void;
@@ -131,20 +143,16 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       minute: '2-digit'
     });
   };  // Helper function to get message text with fallbacks
-  const obterTextoMensagem = (mensagem: any) => {
+  const obterTextoMensagem = (mensagem: Mensagem) => {
     return mensagem.texto?.trim() || 
            mensagem.conteudo?.trim() || 
-           mensagem.content?.trim() || 
-           mensagem.message?.trim() ||
            'Mensagem sem conteúdo';
   };
 
   // Helper function to get sender name with fallbacks
-  const obterNomeRemetente = (mensagem: any) => {
+  const obterNomeRemetente = (mensagem: Mensagem) => {
     return mensagem.remetente?.nome || 
-           mensagem.remetente?.name || 
            mensagem.usuario?.nome || 
-           mensagem.user?.nome ||
            `Usuário ${mensagem.remetenteId?.substring(0, 8) || 'Anônimo'}`;
   };
 

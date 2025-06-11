@@ -1,45 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import { FaHome, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaSpinner } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 import { useEventos } from '@/hooks/useEventos';
 import { useInscricoes } from '@/hooks/useInscricoes';
 
-interface EventoCalendario {
-  _id: string;
-  titulo: string;
-  data: string;
-  local: string;
-  tipo: string;
-  esporte?: {
-    nome: string;
-  };
-}
-
 export default function CalendarPage() {
   const { isAuthenticated } = useAuth();
   const { meusEventos, isLoading: eventosLoading } = useEventos();
   const { minhasInscricoes } = useInscricoes();
-  const [eventosCalendario, setEventosCalendario] = useState<EventoCalendario[]>([]);
-
-  // Filtrar eventos baseado nas inscrições do usuário
-  useEffect(() => {
-    if (!isAuthenticated || !meusEventos || !minhasInscricoes) return;
-
-    // Buscar IDs dos esportes em que o usuário está inscrito e aprovado
-    const esportesAprovados = minhasInscricoes
-      .filter(inscricao => inscricao.status === 'aceito')
-      .map(inscricao => inscricao.esporteId);
-
-    // Filtrar eventos: eventos gerais (esporteId === "0") OU eventos dos esportes inscritos
-    const eventosFiltrados = meusEventos.filter(evento => 
-      evento.esporteId === "0" || esportesAprovados.includes(evento.esporteId)
+  // Filtrar eventos baseados nas inscrições aprovadas
+  const eventosCalendario = meusEventos.filter(evento => {
+    // Eventos gerais são visíveis para todos os usuários autenticados
+    if (evento.esporteId === "0") {
+      return true;
+    }
+    
+    // Eventos de esporte são visíveis apenas se o usuário tem inscrição aprovada
+    const inscricaoAprovada = minhasInscricoes.find(
+      inscricao => inscricao.esporteId === evento.esporteId && inscricao.status === 'aceito'
     );
-
-    setEventosCalendario(eventosFiltrados);
-  }, [isAuthenticated, meusEventos, minhasInscricoes]);
+    
+    return !!inscricaoAprovada;
+  });
 
   const formatarData = (dataISO: string) => {
     const data = new Date(dataISO);
@@ -56,10 +40,10 @@ export default function CalendarPage() {
     };
   };
 
-  const formatarTipoEvento = (tipo: string, esporte?: { nome: string }) => {
-    if (tipo === 'geral') return 'Evento Geral';
-    if (tipo === 'treino' && esporte) return `Treino - ${esporte.nome}`;
-    return tipo;
+  const formatarTipoEvento = (tipo: string, esporteId?: string) => {
+    if (esporteId === "0") return 'Evento Geral';
+    if (tipo === 'treino') return `Treino`;
+    return tipo.charAt(0).toUpperCase() + tipo.slice(1);
   };
 
   if (!isAuthenticated) {
@@ -124,11 +108,10 @@ export default function CalendarPage() {
       ) : (
         <div className="space-y-4">
           {eventosCalendario
-            .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
-            .map((evento) => {
+            .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())            .map((evento) => {
               const { data, hora } = formatarData(evento.data);
-              const tipoEvento = formatarTipoEvento(evento.tipo, evento.esporte);
-              const isProximo = new Date(evento.data) >= new Date();              return (
+              const tipoEvento = formatarTipoEvento(evento.tipo, evento.esporteId);
+              const isProximo = new Date(evento.data) >= new Date();return (
                 <div 
                   key={evento._id} 
                   className={`bg-gray-900 border rounded-lg p-6 transition-all duration-200 hover:border-red-500 ${
