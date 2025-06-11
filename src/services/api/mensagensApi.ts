@@ -51,11 +51,10 @@ class MensagensService extends AtleticaHubAPI {  // Buscar mensagens de um espor
         method: 'POST',
         body: JSON.stringify({ conteudo: data.conteudo })
       });
-      
-      console.log('✅ MensagensService: Mensagem enviada com sucesso', {
+        console.log('✅ MensagensService: Mensagem enviada com sucesso', {
         resultado: result,
         estrutura: result && typeof result === 'object' ? Object.keys(result) : 'not object',
-        temId: !!(result as any)?._id
+        temId: !!(result as Mensagem)?._id || !!(result as Mensagem)?.id
       });
       
       return result as Mensagem;
@@ -104,12 +103,11 @@ class MensagensService extends AtleticaHubAPI {  // Buscar mensagens de um espor
         method: 'PUT',
         body: JSON.stringify({ conteudo })
       });
-      
-      console.log('✅ MensagensService: Mensagem editada com sucesso', {
+        console.log('✅ MensagensService: Mensagem editada com sucesso', {
         resultado: result,
         estrutura: result && typeof result === 'object' ? Object.keys(result) : 'not object',
-        temId: !!(result as any)?._id || !!(result as any)?.id,
-        editada: !!(result as any)?.editada
+        temId: !!(result as Mensagem)?._id || !!(result as Mensagem)?.id,
+        editada: !!(result as Mensagem)?.editada
       });
       
       return result as Mensagem;

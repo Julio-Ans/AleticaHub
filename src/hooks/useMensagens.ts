@@ -57,7 +57,13 @@ export const useMensagens = (esporteId: string) => {
       );
       setMensagens(mensagensOrdenadas);    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar mensagens';
-      console.error(`❌ Erro ao carregar mensagens para esporte ${esporteId}:`, err);
+      console.error(`❌ Erro ao carregar mensagens para esporte ${esporteId}:`, {
+        error: err,
+        errorMessage,
+        stack: err instanceof Error ? err.stack : 'no stack',
+        esporteId,
+        isChatGeral: esporteId === '0'
+      });
       
       // Verificar se é erro de "sem mensagens" (404) - isso é normal
       if (errorMessage.includes('404') || errorMessage.includes('não encontrado')) {
@@ -67,7 +73,7 @@ export const useMensagens = (esporteId: string) => {
       } else if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
         console.log('🔒 Acesso negado para este esporte (usuário não inscrito)');
         setMensagens([]);
-        setError(null); // Não mostrar erro para situação normal
+        setError('Você não tem permissão para acessar este chat. Verifique se está inscrito no esporte.');
       } else {
         // Erro real que deve ser exibido
         console.error('💥 Erro real ao carregar mensagens:', errorMessage);
@@ -76,9 +82,16 @@ export const useMensagens = (esporteId: string) => {
       }} finally {
       setIsLoading(false);
     }
-  }, [esporteId, isAuthenticated, user]);// Enviar nova mensagem
+  }, [esporteId, isAuthenticated, user]);  // Enviar nova mensagem
   const enviarMensagem = useCallback(async (conteudo: string) => {
-    console.log('📤 useMensagens: Enviando mensagem', { esporteId, conteudo: conteudo?.substring(0, 50) + '...' });
+    console.log('📤 useMensagens: Enviando mensagem', { 
+      esporteId, 
+      conteudo: conteudo?.substring(0, 50) + '...',
+      isAuthenticated,
+      temUser: !!user,
+      userId: user?.id,
+      userRole: user?.role
+    });
 
     if (!isAuthenticated || !esporteId || !conteudo.trim()) {
       const motivo = !isAuthenticated ? 'não autenticado' : !esporteId ? 'sem esporteId' : 'conteúdo vazio';
@@ -91,9 +104,16 @@ export const useMensagens = (esporteId: string) => {
       };
       
       console.log('🌐 useMensagens: Dados sendo enviados para API:', data);
+        const novaMensagem = await mensagensService.enviarMensagem(data);
+      console.log('✅ useMensagens: Mensagem enviada, resposta da API:', {
+        resultado: novaMensagem,
+        estrutura: novaMensagem && typeof novaMensagem === 'object' ? Object.keys(novaMensagem) : 'not object',
+        temId: !!(novaMensagem as Mensagem)?._id || !!(novaMensagem as Mensagem)?.id,
+        conteudo: (novaMensagem as Mensagem)?.conteudo || (novaMensagem as Mensagem)?.texto,
+        esporteIdResposta: (novaMensagem as Mensagem)?.esporteId,
+        usuarioNome: (novaMensagem as Mensagem)?.usuarioNome
+      });
       
-      const novaMensagem = await mensagensService.enviarMensagem(data);
-      console.log('✅ useMensagens: Mensagem enviada, resposta da API:', novaMensagem);
       console.log('✅ useMensagens: Atualizando lista de mensagens');
       setMensagens(prev => [...prev, novaMensagem]);
       return novaMensagem;
@@ -114,7 +134,7 @@ export const useMensagens = (esporteId: string) => {
       }
       throw err;
     }
-  }, [esporteId, isAuthenticated]);
+  }, [esporteId, isAuthenticated, user]);
   // Excluir mensagem (admin ou próprio usuário)
   const excluirMensagem = useCallback(async (mensagemId: string) => {
     if (!isAuthenticated) return;
