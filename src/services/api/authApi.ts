@@ -92,16 +92,16 @@ class AuthAPI extends AtleticaHubAPI {  async login(email: string, password: str
       this.removeToken();
     }
   }
-
   async getProfile(): Promise<User> {
-    return this.request<User>('/auth/me');
+    return this.request<{ success: boolean; user: User }>('/auth/profile')
+      .then(response => response.user);
   }
 
   async updateProfile(userData: Partial<User>): Promise<User> {
-    return this.request<User>('/auth/profile', {
+    return this.request<{ success: boolean; user: User }>('/auth/update-profile', {
       method: 'PUT',
       body: JSON.stringify(userData)
-    });
+    }).then(response => response.user);
   }
 
   setToken(token: string): void {
