@@ -18,31 +18,17 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
   const { minhasInscricoes } = useInscricoes();
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('');
   const [novaMensagem, setNovaMensagem] = useState('');
-  const mensagensRef = useRef<HTMLDivElement>(null);  // Filtrar esportes - apenas os que o usuário está inscrito e aprovado
-  const gruposDisponiveis = useMemo(() => {
-    console.log('🔍 Calculando grupos disponíveis:', {
-      totalEsportes: esportes.length,
-      totalInscricoes: minhasInscricoes.length,
-      esportes: esportes.map(e => ({ id: e.id, nome: e.nome })),
-      inscricoes: minhasInscricoes.map(i => ({ esporteId: i.esporteId, status: i.status }))
-    });
+  const mensagensRef = useRef<HTMLDivElement>(null);
 
+  // Filtrar esportes - apenas os que o usuário está inscrito e aprovado
+  const gruposDisponiveis = useMemo(() => {
     const esportesPermitidos = esportes.filter(esporte => {
       // Verificar se o usuário tem inscrição aprovada neste esporte
-      const temInscricao = minhasInscricoes.some(inscricao => 
+      return minhasInscricoes.some(inscricao => 
         inscricao.esporteId === esporte.id.toString() && 
         inscricao.status === 'aceito'
       );
-      
-      console.log(`🏃 Esporte ${esporte.nome} (ID: ${esporte.id}):`, {
-        temInscricao,
-        inscricoesDoEsporte: minhasInscricoes.filter(i => i.esporteId === esporte.id.toString())
-      });
-      
-      return temInscricao;
     });
-
-    console.log('✅ Esportes permitidos:', esportesPermitidos.map(e => e.nome));
 
     // Adicionar grupo geral como primeira opção (sempre disponível)
     const grupos = [
@@ -50,11 +36,10 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       ...esportesPermitidos
     ];
     
-    console.log('📋 Grupos finais disponíveis:', grupos.map(g => g.nome));
-    
     return grupos;
   }, [esportes, minhasInscricoes]);
-      // Selecionar automaticamente o grupo geral ou primeiro esporte disponível
+
+  // Selecionar automaticamente o grupo geral ou primeiro esporte disponível
   useEffect(() => {
     if (isOpen && gruposDisponiveis.length > 0 && !grupoSelecionado) {
       // Sempre começar com o Chat Geral (id: '0')
@@ -64,102 +49,44 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
 
   // Determina o esporteId baseado no grupo selecionado
   const esporteId = grupoSelecionado;
-    const {
+  
+  const {
     mensagens,
     carregarMensagens,
     enviarMensagem,
     isLoading,
     error,
     setError
-  } = useMensagens(esporteId || '');  // Carregar mensagens quando o modal abrir ou o grupo mudar
-  useEffect(() => {    console.log('🔄 ModalMensagens: useEffect carregarMensagens', {
-      isOpen,
-      esporteId,
-      gruposDisponiveis: gruposDisponiveis.map(g => g.id),
-      grupoExiste: gruposDisponiveis.some(g => g.id.toString() === esporteId)
-    });    // Carregar mensagens se modal estiver aberto e tiver esporteId válido
-    if (isOpen && esporteId) {
-      // Limpar estado anterior ao trocar de grupo
-      setError(null);
-      console.log(`📞 Chamando carregarMensagens para esporte: ${esporteId}`);
-      
-      // Forçar limpeza das mensagens antes de carregar novas
-      carregarMensagens().catch(err => {
-        console.error('💥 Erro ao carregar mensagens no useEffect:', err);
-      }).then(() => {
-        // Auto-scroll após carregar mensagens
-        setTimeout(() => {
-          if (mensagensRef.current) {
-            mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
-          }
-        }, 100);
-      });
-    }
-  }, [isOpen, esporteId, carregarMensagens, gruposDisponiveis, setError]);  // Auto-scroll para o final sempre que as mensagens mudarem
+  } = useMensagens(esporteId || '');
+
+  // Carregar mensagens quando o modal abrir ou o grupo mudar
   useEffect(() => {
-    // Log para debug das mensagens
-    if (mensagens.length > 0) {
-      console.log('🖥️ Renderizando mensagens:', { 
-        total: mensagens.length, 
-        esporteId, 
-        primeiraMensagem: mensagens[0] 
+    if (isOpen && esporteId) {
+      setError(null);
+      carregarMensagens().catch(err => {
+        console.error('Erro ao carregar mensagens:', err);
       });
     }
-    
+  }, [isOpen, esporteId, carregarMensagens, setError]);
+
+  // Auto-scroll para o final quando as mensagens mudarem
+  useEffect(() => {
     if (mensagensRef.current && mensagens.length > 0) {
-      console.log(`📬 Mensagens carregadas: ${mensagens.length} para grupo: ${esporteId}`);
-      // Usar requestAnimationFrame para garantir que o DOM foi atualizado
       requestAnimationFrame(() => {
         if (mensagensRef.current) {
           mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
-          console.log(`✅ Auto-scroll executado para ${mensagens.length} mensagens`);
         }
       });
     }
-  }, [mensagens, esporteId]);
-  // Auto-scroll específico quando trocar de grupo
-  useEffect(() => {
-    if (mensagensRef.current && esporteId) {
-      console.log(`🔄 Fazendo auto-scroll para grupo: ${esporteId}`);
-      setTimeout(() => {
-        if (mensagensRef.current) {
-          const scrollHeight = mensagensRef.current.scrollHeight;
-          const clientHeight = mensagensRef.current.clientHeight;
-          console.log(`📏 ScrollHeight: ${scrollHeight}, ClientHeight: ${clientHeight}`);
-          mensagensRef.current.scrollTop = scrollHeight;
-          console.log(`⬇️ ScrollTop definido para: ${scrollHeight}`);
-        }
-      }, 300); // Timeout maior para garantir que as mensagens foram carregadas
-    }
-  }, [esporteId]);
+  }, [mensagens]);
 
-  // Auto-scroll quando o modal abrir
-  useEffect(() => {
-    if (isOpen && mensagensRef.current) {
-      // Limpar erro ao abrir o modal
-      setError(null);
-      setTimeout(() => {
-        if (mensagensRef.current) {
-          mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
-        }
-      }, 200); // Aumentar timeout para garantir carregamento
-    }
-  }, [isOpen, setError]);  const handleEnviarMensagem = async () => {
-    console.log('🚀 Tentando enviar mensagem...', { 
-      mensagem: novaMensagem.trim(), 
-      esporteId, 
-      usuario: user?.nome,
-      token: !!localStorage.getItem('authToken') || !!localStorage.getItem('athletica_token')
-    });
-
+  const handleEnviarMensagem = async () => {
     if (!novaMensagem.trim() || !esporteId) {
-      console.log('❌ Validação falhou:', { mensagem: !novaMensagem.trim(), esporteId: !esporteId });
       return;
     }
 
     try {
-      const resultado = await enviarMensagem(novaMensagem);
-      console.log('✅ Mensagem enviada com sucesso:', resultado);
+      await enviarMensagem(novaMensagem);
       setNovaMensagem('');
       
       // Garantir scroll para o final após enviar mensagem
@@ -169,7 +96,7 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
         }
       }, 100);
     } catch (error) {
-      console.error('❌ Erro ao enviar mensagem:', error);
+      console.error('Erro ao enviar mensagem:', error);
       // Exibir erro para o usuário se não for um erro esperado
       if (!(error instanceof Error && error.message.includes('não encontrado'))) {
         setError(error instanceof Error ? error.message : 'Erro ao enviar mensagem');
@@ -207,9 +134,10 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
         </div>
 
         <div className="flex h-[70vh]">
-          {/* Sidebar - Grupos */}          <div className="w-1/4 border-r border-gray-800 p-4">
+          {/* Sidebar - Grupos */}
+          <div className="w-1/4 border-r border-gray-800 p-4">
             <h3 className="text-sm font-semibold text-gray-400 mb-3">GRUPOS</h3>
-              {/* Grupos dos Esportes */}
+            {/* Grupos dos Esportes */}
             <div className="space-y-1">
               {gruposDisponiveis.map((grupo) => (
                 <button
@@ -241,53 +169,61 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
           </div>
 
           {/* Área principal - Chat */}
-          <div className="flex-1 flex flex-col">            {/* Header do chat */}
+          <div className="flex-1 flex flex-col">
+            {/* Header do chat */}
             <div className="p-4 border-b border-gray-800">
               <h4 className="font-semibold">
                 {gruposDisponiveis.find(g => g.id.toString() === grupoSelecionado)?.nome || 'Selecione um grupo'}
               </h4>
-            </div>            {/* Mensagens */}
+            </div>
+
+            {/* Mensagens */}
             <div 
               ref={mensagensRef}
               className="flex-1 overflow-y-auto p-4 space-y-3"
               style={{ scrollBehavior: 'smooth' }}
-            >              {error && (
+            >
+              {error && (
                 <div className="bg-red-900 border border-red-600 text-red-200 px-3 py-2 rounded text-sm">
                   {error}
                 </div>
-              )}{isLoading ? (
+              )}
+
+              {isLoading ? (
                 <div className="text-center text-gray-400">Carregando mensagens...</div>
               ) : mensagens.length === 0 ? (
                 <div className="text-center text-gray-400">
                   Nenhuma mensagem ainda. Seja o primeiro a enviar uma mensagem!
-                </div>              ) : (
+                </div>
+              ) : (
                 mensagens.map((mensagem) => (
+                  <div
+                    key={mensagem.id}
+                    className={`flex ${
+                      mensagem.remetenteId === user?.id ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
                     <div
-                      key={mensagem.id}
-                      className={`flex ${
-                        mensagem.remetenteId === user?.id ? 'justify-end' : 'justify-start'
+                      className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+                        mensagem.remetenteId === user?.id
+                          ? 'bg-red-600 text-white'
+                          : 'bg-gray-800 text-gray-200'
                       }`}
                     >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                          mensagem.remetenteId === user?.id
-                            ? 'bg-red-600 text-white'
-                            : 'bg-gray-800 text-gray-200'
-                        }`}
-                      >                        {mensagem.remetenteId !== user?.id && (
-                          <div className="text-xs text-gray-400 mb-1">
-                            {mensagem.remetente?.nome || `Usuário ${mensagem.remetenteId?.substring(0, 8) || 'Anônimo'}`}
-                          </div>
-                        )}
-                        <div className="text-sm">
-                          {mensagem.texto?.trim() || mensagem.conteudo?.trim() || 'Mensagem sem conteúdo'}
+                      {mensagem.remetenteId !== user?.id && (
+                        <div className="text-xs text-gray-400 mb-1">
+                          {mensagem.remetente?.nome || `Usuário ${mensagem.remetenteId?.substring(0, 8) || 'Anônimo'}`}
                         </div>
-                        <div className="text-xs opacity-75 mt-1">
-                          {formatarData(mensagem.criadaEm)}
-                        </div>
+                      )}
+                      <div className="text-sm">
+                        {mensagem.texto?.trim() || 'Mensagem sem conteúdo'}
+                      </div>
+                      <div className="text-xs opacity-75 mt-1">
+                        {formatarData(mensagem.criadaEm)}
                       </div>
                     </div>
-                  ))
+                  </div>
+                ))
               )}
             </div>
 
