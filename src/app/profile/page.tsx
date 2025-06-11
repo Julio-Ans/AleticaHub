@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FaHome, FaUser, FaSpinner, FaSave } from 'react-icons/fa';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { authApi } from '@/services/api/authApi';
 
 interface UserProfile {
   nome: string;
@@ -14,7 +15,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
     nome: '',
     telefone: '',
@@ -25,8 +26,28 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  useEffect(() => {
+  const [success, setSuccess] = useState(false);  useEffect(() => {
+    const carregarPerfil = async () => {
+      try {
+        // Usar a API do sistema em vez de fazer requisições diretas
+        const userData = await authApi.getProfile();
+        
+        setProfile({
+          nome: userData.nome || '',
+          telefone: userData.telefone || '',
+          curso: userData.curso || '',
+          dataNascimento: userData.dataNascimento ? 
+            new Date(userData.dataNascimento).toISOString().split('T')[0] : '',
+          email: userData.email || user?.email || ''
+        });
+      } catch (err) {
+        setError('Erro ao carregar perfil');
+        console.error('Erro:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const loadProfile = async () => {
       if (isAuthenticated && user) {
         await carregarPerfil();
@@ -36,80 +57,22 @@ export default function ProfilePage() {
     };
     
     loadProfile();
-  }, [user, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const carregarPerfil = async () => {
-    try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('athletica_token');
-      if (!token) {
-        setError('Token de autenticação não encontrado');
-        return;
-      }
-      
-      const response = await fetch('/auth/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idToken: token }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          setProfile({
-            nome: data.user.nome || '',
-            telefone: data.user.telefone || '',
-            curso: data.user.curso || '',
-            dataNascimento: data.user.dataNascimento ? 
-              new Date(data.user.dataNascimento).toISOString().split('T')[0] : '',
-            email: data.user.email || user?.email || ''
-          });
-        }
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Erro ao carregar perfil');
-      }
-    } catch (err) {
-      setError('Erro ao carregar perfil');
-      console.error('Erro:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  }, [user, isAuthenticated]);const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess(false);
     setError(null);
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('athletica_token');
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
-      }
-
-      const response = await fetch('/auth/update-profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          idToken: token,
-          nome: profile.nome,
-          telefone: profile.telefone,
-          curso: profile.curso,
-        }),
+      // Usar o updateProfile do contexto para atualizar o perfil
+      await updateProfile({
+        nome: profile.nome,
+        telefone: profile.telefone,
+        curso: profile.curso,
       });
 
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Erro ao atualizar perfil');
-      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar perfil');
     } finally {

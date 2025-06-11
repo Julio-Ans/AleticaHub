@@ -245,9 +245,11 @@ export default function SportDetailPage() {
                           <span>{formatDate(mensagem.criadaEm)}</span>
                           
                           {podeExcluirMensagem(mensagem) && (
-                            <div className="flex gap-1 ml-2">
-                              <button
-                                onClick={() => handleDeleteMessage(mensagem.id)}
+                            <div className="flex gap-1 ml-2">                              <button
+                                onClick={() => {
+                                  const id = mensagem.id || mensagem._id;
+                                  if (id) handleDeleteMessage(id);
+                                }}
                                 className="text-red-400 hover:text-red-300"
                                 title="Excluir"
                               >

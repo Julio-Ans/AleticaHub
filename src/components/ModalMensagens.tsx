@@ -8,12 +8,15 @@ import { useInscricoes } from '@/hooks/useInscricoes';
 import { Esporte } from '@/services/api';
 
 interface Mensagem {
-  id: string;
+  id?: string;
+  _id?: string;
   texto?: string;
   conteudo?: string;
   remetente?: { nome: string };
   usuario?: { nome: string };
   remetenteId?: string;
+  usuarioId?: string;
+  usuarioNome?: string;
   criadaEm: string;
   editada?: boolean;
   fixada?: boolean;
@@ -30,14 +33,44 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
   const { minhasInscricoes } = useInscricoes();
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('');
   const [novaMensagem, setNovaMensagem] = useState('');
-  const mensagensRef = useRef<HTMLDivElement>(null);  // Filtrar esportes - apenas os que o usuário está inscrito e aprovado
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [conteudoEditando, setConteudoEditando] = useState('');
+  const mensagensRef = useRef<HTMLDivElement>(null);  // Filtrar esportes - apenas os que o usuário está inscrito e aprovado, ou admin acessa todos
   const gruposDisponiveis = useMemo(() => {
+    console.log('🔍 ModalMensagens: Calculando grupos disponíveis', {
+      totalEsportes: esportes.length,
+      minhasInscricoes: minhasInscricoes.length,
+      userRole: user?.role,
+      esportesStructure: esportes.map(e => ({ id: e.id, nome: e.nome })),
+      inscricoesStructure: minhasInscricoes.map(i => ({ 
+        esporteId: i.esporteId, 
+        status: i.status,
+        esporteNome: i.esporte?.nome 
+      }))
+    });
+
     const esportesPermitidos = esportes.filter(esporte => {
-      // Verificar se o esporte tem ID válido e se o usuário tem inscrição aprovada
-      return esporte && esporte.id && minhasInscricoes.some(inscricao => 
-        inscricao.esporteId === esporte.id.toString() && 
-        inscricao.status === 'aceito'
-      );
+      // Filtrar o esporte "Geral" (id: 0) para evitar duplicação
+      if (!esporte || !esporte.id || esporte.id.toString() === '0') {
+        return false;
+      }
+
+      // Admins podem acessar todos os esportes
+      if (user?.role === 'admin') {
+        console.log('✅ ModalMensagens: Admin tem acesso ao esporte', esporte.nome);
+        return true;
+      }
+
+      // Usuários normais apenas esportes com inscrição aprovada
+      const temInscricaoAceita = minhasInscricoes.some(inscricao => {
+        const match = inscricao.esporteId === esporte.id.toString() && inscricao.status === 'aceito';
+        if (match) {
+          console.log('✅ ModalMensagens: Usuário tem inscrição aceita no esporte', esporte.nome);
+        }
+        return match;
+      });
+      
+      return temInscricaoAceita;
     });
 
     // Adicionar grupo geral como primeira opção (sempre disponível)
@@ -50,13 +83,21 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       }))
     ];
     
+    console.log('📋 ModalMensagens: Grupos finais disponíveis', grupos);
     return grupos;
-  }, [esportes, minhasInscricoes]);
-
+  }, [esportes, minhasInscricoes, user?.role]);
   // Selecionar automaticamente o grupo geral ou primeiro esporte disponível
   useEffect(() => {
+    console.log('🔧 ModalMensagens: useEffect seleção automática', {
+      isOpen,
+      gruposDisponiveis: gruposDisponiveis.length,
+      grupoSelecionado,
+      primeiroGrupo: gruposDisponiveis[0]
+    });
+
     if (isOpen && gruposDisponiveis.length > 0 && !grupoSelecionado) {
       // Sempre começar com o Chat Geral (id: '0')
+      console.log('📌 ModalMensagens: Selecionando Chat Geral automaticamente');
       setGrupoSelecionado('0');
     }
   }, [isOpen, gruposDisponiveis, grupoSelecionado]);
@@ -70,20 +111,26 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
     fixarMensagem,
     isLoading,
     error,
-    setError
-  } = useMensagens(esporteId || '');// Carregar mensagens quando o modal abrir ou o grupo mudar
+    setError,
+    editarMensagem
+  } = useMensagens(esporteId || '');  // Carregar mensagens quando o modal abrir ou o grupo mudar
   useEffect(() => {
     if (isOpen && esporteId) {
       console.log('🔄 ModalMensagens: Carregando mensagens para grupo:', {
         esporteId,
         grupoSelecionado,
         isChatGeral: esporteId === '0',
-        gruposDisponiveis: gruposDisponiveis.map(g => ({ id: g.id, nome: g.nome }))
+        gruposDisponiveis: gruposDisponiveis.map(g => ({ id: g.id, nome: g.nome })),
+        modalAberto: isOpen,
+        temUser: !!user,
+        userRole: user?.role
       });
       
       setError(null);
-      carregarMensagens().catch(err => {
-        console.error('Erro ao carregar mensagens:', err);
+      carregarMensagens().then(() => {
+        console.log('✅ ModalMensagens: Mensagens carregadas com sucesso');
+      }).catch(err => {
+        console.error('❌ ModalMensagens: Erro ao carregar mensagens:', err);
         // Não mostrar erro para usuário se for "esporte não encontrado"
         // pois pode ser normal (esporte ainda não configurado para chat)
         if (!(err instanceof Error && err.message.includes('não encontrado'))) {
@@ -91,7 +138,7 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
         }
       });
     }
-  }, [isOpen, esporteId, carregarMensagens, setError, grupoSelecionado, gruposDisponiveis]);
+  }, [isOpen, esporteId, carregarMensagens, setError, grupoSelecionado, gruposDisponiveis, user]);
   // Auto-scroll para o final quando as mensagens mudarem
   useEffect(() => {
     if (mensagensRef.current && mensagens.length > 0) {
@@ -159,6 +206,58 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       setError('Erro ao excluir mensagem. Tente novamente.');
     }
   };
+
+  // Função para iniciar edição de mensagem
+  const handleIniciarEdicao = (mensagem: Mensagem) => {
+    const id = mensagem.id || mensagem._id;
+    if (!id) return;
+    
+    setEditandoId(id);
+    setConteudoEditando(obterTextoMensagem(mensagem));
+  };
+  // Função para salvar edição de mensagem
+  const handleSalvarEdicao = async () => {
+    if (!editandoId || !conteudoEditando.trim()) return;
+    
+    try {
+      console.log('📝 ModalMensagens: Salvando edição', { editandoId, conteudo: conteudoEditando.substring(0, 50) + '...' });
+      
+      await editarMensagem(editandoId, conteudoEditando.trim());
+      
+      console.log('✅ ModalMensagens: Edição salva, limpando estados e recarregando');
+      
+      setEditandoId(null);
+      setConteudoEditando('');
+      
+      // Recarregar mensagens para garantir que a edição apareça
+      await carregarMensagens();
+      
+      // Garantir scroll para o final após editar mensagem
+      setTimeout(() => {
+        if (mensagensRef.current) {
+          mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
+        }
+      }, 150);
+    } catch (error) {
+      console.error('❌ ModalMensagens: Erro ao editar mensagem:', error);
+      setError('Erro ao editar mensagem. Tente novamente.');
+    }
+  };
+
+  // Função para cancelar edição
+  const handleCancelarEdicao = () => {
+    setEditandoId(null);
+    setConteudoEditando('');
+  };
+  // Verificar se usuário pode editar mensagem (próprio usuário ou admin)
+  const podeEditarMensagem = (mensagem: Mensagem) => {
+    if (!user) return false;
+    // Admin pode editar qualquer mensagem, usuário só as próprias
+    // Backend usa 'usuarioId' como campo principal
+    const mensagemUserId = mensagem.usuarioId || mensagem.remetenteId;
+    return user.role === 'admin' || mensagemUserId === user.id;
+  };
+
   // Função para fixar/desfixar mensagem (admin)
   const handleFixarMensagem = async (mensagemId: string, fixada: boolean) => {
     if (user?.role !== 'admin') return;
@@ -170,6 +269,7 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       setError('Erro ao fixar mensagem. Tente novamente.');
     }
   };
+
   const formatarData = (data: string) => {
     return new Date(data).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -180,16 +280,32 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
     });
   };  // Helper function to get message text with fallbacks
   const obterTextoMensagem = (mensagem: Mensagem) => {
-    return mensagem.texto?.trim() || 
-           mensagem.conteudo?.trim() || 
+    // Backend envia 'conteudo' como campo principal
+    return mensagem.conteudo?.trim() || 
+           mensagem.texto?.trim() || 
            'Mensagem sem conteúdo';
-  };
-
-  // Helper function to get sender name with fallbacks
+  };  // Helper function to get sender name with fallbacks
   const obterNomeRemetente = (mensagem: Mensagem) => {
-    return mensagem.remetente?.nome || 
-           mensagem.usuario?.nome || 
-           `Usuário ${mensagem.remetenteId?.substring(0, 8) || 'Anônimo'}`;
+    // Debug apenas se necessário (pode ser removido depois)
+    if (!mensagem.usuarioNome && !mensagem.remetente?.nome) {
+      console.log('🔍 obterNomeRemetente - Mensagem sem nome:', {
+        id: mensagem.id || mensagem._id,
+        usuarioNome: mensagem.usuarioNome,
+        remetente: mensagem.remetente,
+        usuario: mensagem.usuario,
+        usuarioId: mensagem.usuarioId,
+        remetenteId: mensagem.remetenteId
+      });
+    }
+    
+    // Tentar múltiplas formas de obter o nome baseado na estrutura real da API
+    const nome = mensagem.usuarioNome ||                    // ← CAMPO CORRETO DA API (backend envia usuarioNome)
+                 mensagem.remetente?.nome || 
+                 mensagem.usuario?.nome || 
+                 (user?.id === (mensagem.usuarioId || mensagem.remetenteId) ? user?.nome : null) ||
+                 `Usuário ${(mensagem.usuarioId || mensagem.remetenteId)?.substring(0, 8) || 'Anônimo'}`;
+                 
+    return nome;
   };
 
   if (!isOpen) return null;
@@ -231,12 +347,15 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
                   {grupo.id === '0' && (
                     <span className="text-xs bg-blue-600 px-1 rounded">GERAL</span>
                   )}
+                  {user?.role === 'admin' && grupo.id !== '0' && (
+                    <span className="text-xs bg-green-600 px-1 rounded">ADMIN</span>
+                  )}
                 </button>
               ))}
             </div>
 
             {/* Mensagem se não há grupos disponíveis */}
-            {gruposDisponiveis.length === 1 && (
+            {gruposDisponiveis.length === 1 && user?.role !== 'admin' && (
               <div className="mt-4 p-3 bg-gray-800 rounded-lg">
                 <p className="text-xs text-gray-400 text-center">
                   Inscreva-se e seja aprovado em esportes para acessar mais grupos de chat
@@ -275,15 +394,15 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
                   }
                 </div>) : (                mensagens.map((mensagem, index) => (
                   <div
-                    key={`mensagem-${mensagem.id || index}`}
+                    key={`mensagem-${mensagem.id || mensagem._id || index}`}
                     className={`flex ${
-                      mensagem.remetenteId === user?.id ? 'justify-end' : 'justify-start'
+                      (mensagem.usuarioId || mensagem.remetenteId) === user?.id ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     <div className="max-w-[80%] group">
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                          mensagem.remetenteId === user?.id
+                          (mensagem.usuarioId || mensagem.remetenteId) === user?.id
                             ? 'bg-red-600 text-white'
                             : 'bg-gray-800 text-gray-200'
                         } ${mensagem.fixada ? 'ring-2 ring-yellow-500' : ''}`}
@@ -292,43 +411,92 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
                           <div className="text-xs text-yellow-300 mb-1 flex items-center gap-1">
                             📌 Mensagem fixada
                           </div>
-                        )}
-                        {mensagem.remetenteId !== user?.id && (
+                        )}                        {(mensagem.usuarioId || mensagem.remetenteId) !== user?.id && (
                           <div className="text-xs text-gray-400 mb-1">
                             {obterNomeRemetente(mensagem)}
                           </div>
                         )}
-                        <div className="text-sm">
-                          {obterTextoMensagem(mensagem)}
-                        </div>
-                        <div className="text-xs opacity-75 mt-1">
-                          {formatarData(mensagem.criadaEm)}
-                          {mensagem.editada && <span className="ml-1">(editada)</span>}
-                        </div>
+                        
+                        {/* Modo de edição */}
+                        {editandoId === (mensagem.id || mensagem._id) ? (
+                          <div className="space-y-2">                            <textarea
+                              value={conteudoEditando}
+                              onChange={(e) => setConteudoEditando(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSalvarEdicao();
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleCancelarEdicao();
+                                }
+                              }}
+                              className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white text-sm resize-none"
+                              rows={2}
+                              placeholder="Digite o novo conteúdo..."
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={handleSalvarEdicao}
+                                disabled={!conteudoEditando.trim()}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-3 py-1 rounded text-xs text-white"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                onClick={handleCancelarEdicao}
+                                className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-xs text-white"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-sm">
+                              {obterTextoMensagem(mensagem)}
+                            </div>
+                            <div className="text-xs opacity-75 mt-1">
+                              {formatarData(mensagem.criadaEm)}
+                              {mensagem.editada && <span className="ml-1">(editada)</span>}
+                            </div>
+                          </>                        )}
                       </div>
-                        {/* Botões de ação */}
-                      <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        {/* Apenas admins podem fixar mensagens */}
-                        {user?.role === 'admin' && (
-                          <button
-                            onClick={() => handleFixarMensagem(mensagem.id, mensagem.fixada || false)}
-                            className="text-yellow-500 hover:text-yellow-400 text-xs p-1"
-                            title={mensagem.fixada ? "Desfixar mensagem" : "Fixar mensagem"}
-                          >
-                            📌
-                          </button>
-                        )}
-                        {/* Usuário pode excluir suas próprias mensagens, admin pode excluir qualquer uma */}
-                        {(mensagem.remetenteId === user?.id || user?.role === 'admin') && (
-                          <button
-                            onClick={() => handleExcluirMensagem(mensagem.id)}
-                            className="text-red-500 hover:text-red-400 text-xs p-1"
-                            title="Excluir mensagem"
-                          >
-                            🗑️
-                          </button>
-                        )}
-                      </div>
+                        {/* Botões de ação - só mostrar quando não está editando */}
+                      {editandoId !== (mensagem.id || mensagem._id) && (
+                        <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                          {/* Apenas admins podem fixar mensagens */}
+                          {user?.role === 'admin' && (
+                            <button
+                              onClick={() => handleFixarMensagem(mensagem.id || mensagem._id || '', mensagem.fixada || false)}
+                              className="text-yellow-500 hover:text-yellow-400 text-xs p-1"
+                              title={mensagem.fixada ? "Desfixar mensagem" : "Fixar mensagem"}
+                            >
+                              📌
+                            </button>
+                          )}
+                          {/* Usuário pode editar suas próprias mensagens, admin pode editar qualquer uma */}
+                          {podeEditarMensagem(mensagem) && (
+                            <button
+                              onClick={() => handleIniciarEdicao(mensagem)}
+                              className="text-blue-500 hover:text-blue-400 text-xs p-1"
+                              title="Editar mensagem"
+                            >
+                              ✏️
+                            </button>
+                          )}
+                          {/* Usuário pode excluir suas próprias mensagens, admin pode excluir qualquer uma */}
+                          {((mensagem.usuarioId || mensagem.remetenteId) === user?.id || user?.role === 'admin') && (
+                            <button
+                              onClick={() => handleExcluirMensagem(mensagem.id || mensagem._id || '')}
+                              className="text-red-500 hover:text-red-400 text-xs p-1"
+                              title="Excluir mensagem"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

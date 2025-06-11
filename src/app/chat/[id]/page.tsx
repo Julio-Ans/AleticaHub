@@ -7,11 +7,14 @@ import { FaHome, FaTrash, FaEdit, FaThumbsUp } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 
 type Mensagem = {
-  id: string;
-  texto: string;
-  conteudo: string;
-  remetente: { nome: string; id: string };
-  remetenteId: string;
+  id?: string;
+  _id?: string;
+  texto?: string;
+  conteudo?: string;
+  remetente?: { nome: string; id: string };
+  remetenteId?: string;
+  usuarioId?: string;
+  usuarioNome?: string;
   criadaEm: string;
   fixada?: boolean;
   editada?: boolean;
@@ -64,12 +67,10 @@ export default function ChatPage() {  const { id } = useParams();
   const enviarMensagem = async () => {
     if (!novaMensagem.trim() || !permitido) return;
 
-    try {
-      const res = await fetch(`/api/mensagens/${id}`, {
+    try {      const res = await fetch(`/api/mensagens/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          texto: novaMensagem,
           conteudo: novaMensagem 
         }),
       });
@@ -84,7 +85,6 @@ export default function ChatPage() {  const { id } = useParams();
       console.error('Erro ao enviar mensagem:', error);
     }
   };
-
   const editarMensagem = async (mensagemId: string) => {
     if (!novoConteudo.trim()) return;
 
@@ -93,7 +93,6 @@ export default function ChatPage() {  const { id } = useParams();
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          texto: novoConteudo,
           conteudo: novoConteudo 
         }),
       });
@@ -139,14 +138,17 @@ export default function ChatPage() {  const { id } = useParams();
       console.error('Erro ao fixar mensagem:', error);
     }
   };
-
   const iniciarEdicao = (mensagem: Mensagem) => {
-    setEditandoId(mensagem.id);
-    setNovoConteudo(mensagem.texto || mensagem.conteudo);
+    const id = mensagem.id || mensagem._id;
+    if (!id) return;
+    
+    setEditandoId(id);
+    setNovoConteudo(mensagem.texto || mensagem.conteudo || '');
   };
 
   const podeEditarExcluir = (mensagem: Mensagem) => {
-    return user && (user.role === 'admin' || user.id === mensagem.remetenteId);
+    const remetenteId = mensagem.remetenteId || mensagem.usuarioId;
+    return user && (user.role === 'admin' || user.id === remetenteId);
   };
 
   if (loading) {
@@ -187,17 +189,19 @@ export default function ChatPage() {  const { id } = useParams();
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  {editandoId === mensagem.id ? (
+                  {editandoId === (mensagem.id || mensagem._id) ? (
                     <div className="space-y-2">
                       <textarea
                         value={novoConteudo}
                         onChange={(e) => setNovoConteudo(e.target.value)}
                         className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
                         rows={2}
-                      />
-                      <div className="flex gap-2">
+                      />                      <div className="flex gap-2">
                         <button
-                          onClick={() => editarMensagem(mensagem.id)}
+                          onClick={() => {
+                            const id = mensagem.id || mensagem._id;
+                            if (id) editarMensagem(id);
+                          }}
                           className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
                         >
                           Salvar
@@ -211,10 +215,26 @@ export default function ChatPage() {  const { id } = useParams();
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div className="flex items-center gap-2 mb-1">
+                    <>                      <div className="flex items-center gap-2 mb-1">
                         <strong className="text-red-400">
-                          {mensagem.remetente?.nome || 'Usuário'}
+                          {(() => {                            console.log('🔍 Chat individual - Debug nome:', {
+                              mensagemId: mensagem.id || mensagem._id,
+                              remetente: mensagem.remetente,
+                              usuarioNome: mensagem.usuarioNome,
+                              remetenteId: mensagem.remetenteId || mensagem.usuarioId,
+                              userId: user?.id,
+                              userName: user?.nome,
+                              todasAsChaves: Object.keys(mensagem)
+                            });
+                            
+                            const nome = mensagem.usuarioNome ||
+                                        mensagem.remetente?.nome ||
+                                        (user?.id === (mensagem.remetenteId || mensagem.usuarioId) ? user?.nome : null) ||
+                                        `Usuário ${(mensagem.remetenteId || mensagem.usuarioId)?.substring(0, 8) || 'Anônimo'}`;
+                                        
+                            console.log('📝 Chat individual - Nome escolhido:', nome);
+                            return nome;
+                          })()}
                         </strong>
                         {mensagem.fixada && (
                           <span className="bg-yellow-600 text-yellow-100 px-2 py-1 rounded text-xs">
@@ -234,34 +254,41 @@ export default function ChatPage() {  const { id } = useParams();
                 </div>
 
                 {editandoId !== mensagem.id && (
-                  <div className="flex gap-2 ml-2">
-                    {user?.role === 'admin' && (
+                  <div className="flex gap-2 ml-2">                    {user?.role === 'admin' && (
                       <button
-                        onClick={() => fixarMensagem(mensagem.id)}
+                        onClick={() => {
+                          const id = mensagem.id || mensagem._id;
+                          if (id) fixarMensagem(id);
+                        }}
                         className="text-yellow-500 hover:text-yellow-400"
                         title="Fixar mensagem"
                       >
                         <FaThumbsUp size={14} />
                       </button>
-                    )}
-                    {podeEditarExcluir(mensagem) && (
-                      <>
-                        <button
-                          onClick={() => iniciarEdicao(mensagem)}
-                          className="text-blue-500 hover:text-blue-400"
-                          title="Editar"
-                        >
-                          <FaEdit size={14} />
-                        </button>
-                        <button
-                          onClick={() => excluirMensagem(mensagem.id)}
-                          className="text-red-500 hover:text-red-400"
-                          title="Excluir"
-                        >
-                          <FaTrash size={14} />
-                        </button>
-                      </>
-                    )}
+                    )}{podeEditarExcluir(mensagem) && (
+                        <>
+                          <button
+                            onClick={() => {
+                              const id = mensagem.id || mensagem._id;
+                              if (id) iniciarEdicao(mensagem);
+                            }}
+                            className="text-blue-500 hover:text-blue-400"
+                            title="Editar"
+                          >
+                            <FaEdit size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const id = mensagem.id || mensagem._id;
+                              if (id) excluirMensagem(id);
+                            }}
+                            className="text-red-500 hover:text-red-400"
+                            title="Excluir"
+                          >
+                            <FaTrash size={14} />
+                          </button>
+                        </>
+                      )}
                   </div>
                 )}
               </div>

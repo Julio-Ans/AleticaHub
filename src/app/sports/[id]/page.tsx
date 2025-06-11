@@ -294,15 +294,15 @@ export default function SportDetailPage() {
                         return (
                         <div key={mensagemId} className="bg-gray-800 p-3 rounded-lg">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-red-400">                              {mensagem.remetente.nome}
+                            <div className="flex items-center gap-2">                              <span className="font-medium text-sm text-red-400">
+                                {mensagem.remetente?.nome || mensagem.usuarioNome || 'Usuário'}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="text-xs text-gray-500">
                                 {formatDate(mensagem.criadaEm)}
                               </span>
-                              {(isAdmin || mensagem.remetente.nome === user?.nome) && (
+                              {(isAdmin || (mensagem.remetente?.nome === user?.nome || mensagem.usuarioNome === user?.nome)) && (
                                 <div className="flex gap-1 ml-2">
                                   <button
                                     onClick={() => excluirMensagem(mensagemId)}
