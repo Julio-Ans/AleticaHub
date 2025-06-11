@@ -1,17 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useAuth } from '@/context/AuthContext';
 
 
 
-export default function LojaAdminPage() {  const {
+export default function LojaAdminPage() {
+  const { user } = useAuth();
+  const {
     produtos,
     criarProduto, // Usado para criar novos produtos
     atualizarProduto,
     excluirProduto,
-    // isAdmin, // Não usado no momento
-    // error, // Não usado no momento
+    isLoading,
+    error,
     carregarProdutos
   } = useProdutos();
 
@@ -42,8 +46,7 @@ export default function LojaAdminPage() {  const {
   const limparFormulario = () => {
     setForm({ nome: '', descricao: '', preco: '', estoque: '', tamanho: '', foto: null });
     setEditandoId(null);
-  };
-  const handleSubmit = async (e: React.FormEvent) => {
+  };  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
@@ -68,6 +71,7 @@ export default function LojaAdminPage() {  const {
       limparFormulario();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
+      alert(`Erro ao salvar produto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
   const iniciarEdicao = (produto: { 
@@ -87,16 +91,25 @@ export default function LojaAdminPage() {  const {
       tamanho: produto.tamanho || '',
       foto: null
     });
-  };
-
-  const handleExcluir = async (id: string) => {
+  };  const handleExcluir = async (id: string) => {
     try {
       await excluirProduto(id);
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
+      alert(`Erro ao excluir produto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
+  // Verificar se o usuário é admin
+  if (user && user.role !== 'admin') {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-red-900 border border-red-700 text-red-200 p-4 rounded-lg">
+          ❌ Acesso negado. Apenas administradores podem gerenciar a loja.
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Gerenciar Loja</h1>
@@ -162,34 +175,60 @@ export default function LojaAdminPage() {  const {
           onChange={handleChange}
           required={!editandoId}
           className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
-        />
-
-        <div className="flex gap-4">
-          <button type="submit" className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded font-bold">
-            {editandoId ? 'Salvar Alterações' : 'Adicionar Produto'}
+        />        <div className="flex gap-4">
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white py-2 px-4 rounded font-bold"
+          >
+            {isLoading ? 'Salvando...' : (editandoId ? 'Salvar Alterações' : 'Adicionar Produto')}
           </button>
           {editandoId && (
-            <button type="button" onClick={limparFormulario} className="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded font-bold">
+            <button 
+              type="button" 
+              onClick={limparFormulario} 
+              className="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded font-bold"
+            >
               Cancelar
             </button>
           )}
         </div>
-      </form>
-
-      <div className="space-y-4">
+      </form>      <div className="space-y-4">
         <h2 className="text-xl font-bold text-red-500">Produtos Cadastrados</h2>
-        {produtos.length === 0 ? (
+        {isLoading && <p className="text-blue-400">Carregando produtos...</p>}
+        {error && <p className="text-red-400">Erro: {error}</p>}
+        {produtos.length === 0 && !isLoading ? (
           <p className="text-gray-400">Nenhum produto cadastrado ainda.</p>
         ) : (
           produtos.map(prod => (
             <div key={prod.id} className="bg-gray-900 p-4 border border-gray-800 rounded-lg flex justify-between items-center">
               <div>
                 <h3 className="font-bold">{prod.nome}</h3>
-                <p className="text-gray-400">R$ {prod.preco.toFixed(2)} • Estoque: {prod.estoque}</p>
+                <p className="text-gray-400">R$ {prod.preco.toFixed(2)} • Estoque: {prod.estoque}</p>                {prod.imagemUrl && (
+                  <Image 
+                    src={prod.imagemUrl} 
+                    alt={prod.nome} 
+                    width={64}
+                    height={64}
+                    className="mt-2 h-16 w-16 object-cover rounded" 
+                  />
+                )}
               </div>
               <div className="flex gap-3">
-                <button onClick={() => iniciarEdicao(prod)} className="text-red-400 hover:text-red-300">Editar</button>
-                <button onClick={() => handleExcluir(prod.id.toString())} className="text-red-500 hover:text-red-400">Excluir</button>
+                <button 
+                  onClick={() => iniciarEdicao(prod)} 
+                  className="text-red-400 hover:text-red-300"
+                  disabled={isLoading}
+                >
+                  Editar
+                </button>
+                <button 
+                  onClick={() => handleExcluir(prod.id.toString())} 
+                  className="text-red-500 hover:text-red-400"
+                  disabled={isLoading}
+                >
+                  Excluir
+                </button>
               </div>
             </div>
           ))

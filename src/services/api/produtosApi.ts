@@ -21,7 +21,7 @@ export interface CreateProdutoData {
   descricao: string;
   preco: number;
   estoque: number;
-  categoria: string;
+  categoria?: string;
   foto?: File;
 }
 
@@ -71,34 +71,36 @@ class ProdutosService extends AtleticaHubAPI {  // Listar produtos com paginaç�
   // Buscar produto por ID
   async buscarProduto(id: string): Promise<Produto> {
     return this.request(`/api/produtos/${id}`, { auth: false });
-  }
-
-  // Criar produto (admin)
+  }  // Criar produto (admin)
   async criarProduto(data: CreateProdutoData): Promise<Produto> {
     const formData = new FormData();
     formData.append('nome', data.nome);
     formData.append('descricao', data.descricao);
     formData.append('preco', data.preco.toString());
     formData.append('estoque', data.estoque.toString());
-    formData.append('categoria', data.categoria);
     
     if (data.foto) {
-      formData.append('foto', data.foto);
-    }    return this.request('/api/produtos', {
-      method: 'POST',
-      body: formData,
-      headers: await this.getHeaders()
-    });
-  }
+      formData.append('imagem', data.foto); // Backend espera 'imagem', não 'foto'
+    }
 
-  // Atualizar produto (admin)
+    return this.request('/api/produtos', { // Endpoint correto com /api
+      method: 'POST',
+      body: formData
+      // Não passar headers para FormData - será configurado automaticamente
+    });
+  }  // Atualizar produto (admin)
   async atualizarProduto(id: string, data: UpdateProdutoData): Promise<Produto> {
+    const formData = new FormData();
+    if (data.nome) formData.append('nome', data.nome);
+    if (data.descricao) formData.append('descricao', data.descricao);
+    if (data.preco) formData.append('preco', data.preco.toString());
+    if (data.estoque) formData.append('estoque', data.estoque.toString());
+    
     return this.request(`/api/produtos/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: formData
     });
   }
-
   // Excluir produto (admin)
   async excluirProduto(id: string): Promise<{ message: string }> {
     return this.request(`/api/produtos/${id}`, {

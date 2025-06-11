@@ -91,9 +91,7 @@ export const useProdutos = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Criar produto (admin)
+  };  // Criar produto (admin)
   const criarProduto = async (data: CreateProdutoData) => {
     if (user?.role !== 'admin') {
       throw new Error('Apenas administradores podem criar produtos');
@@ -102,6 +100,7 @@ export const useProdutos = () => {
     try {
       setIsLoading(true);
       setError(null);
+      
       const response = await produtosService.criarProduto(data);
       
       // Recarregar a lista
@@ -110,6 +109,7 @@ export const useProdutos = () => {
       return response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar produto';
+      console.error('Erro ao criar produto:', err);
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
