@@ -8,7 +8,6 @@ import { useEsportes } from '@/hooks/useEsportes';
 import { useEventos } from '@/hooks/useEventos';
 import { useInscricoes } from '@/hooks/useInscricoes';
 import ModalMensagens from '@/components/ModalMensagens';
-import ModalEsportes from '@/components/ModalEsportes';
 import { testApiConnectivity } from '@/utils/testApi';
 
 export default function AdminDashboardHome() {  

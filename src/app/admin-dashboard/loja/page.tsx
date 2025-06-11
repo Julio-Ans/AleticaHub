@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useProdutos } from '@/hooks/useProdutos';
-import { produtosService } from '@/services/api';
 
 
 
-export default function LojaAdminPage() {
-  const {
+export default function LojaAdminPage() {  const {
     produtos,
-    criarProduto,
+    criarProduto, // Usado para criar novos produtos
     atualizarProduto,
     excluirProduto,
-    isAdmin,
-    error,
+    // isAdmin, // Não usado no momento
+    // error, // Não usado no momento
     carregarProdutos
   } = useProdutos();
 
@@ -45,45 +43,42 @@ export default function LojaAdminPage() {
     setForm({ nome: '', descricao: '', preco: '', estoque: '', tamanho: '', foto: null });
     setEditandoId(null);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const formData = new FormData();
-  formData.append('nome', form.nome);
-  formData.append('descricao', form.descricao);
-  formData.append('preco', form.preco);
-  formData.append('estoque', form.estoque);
-  formData.append('categoria', 'geral');
-  if (form.foto) {
-    formData.append('foto', form.foto);
-  }
-
-  try {
-    if (editandoId) {
-      await atualizarProduto(editandoId, {
-        nome: form.nome,
-        descricao: form.descricao,
-        preco: parseFloat(form.preco),
-        estoque: parseInt(form.estoque),
-        categoria: 'geral'
-      });
-    } else {
-      await produtosService.request('/api/produtos', {
-        method: 'POST',
-        body: formData,
-        headers: await produtosService.getHeaders(), 
-      });
-      await carregarProdutos();
+    try {
+      if (editandoId) {
+        await atualizarProduto(editandoId, {
+          nome: form.nome,
+          descricao: form.descricao,
+          preco: parseFloat(form.preco),
+          estoque: parseInt(form.estoque),
+          categoria: 'geral'
+        });
+      } else {
+        await criarProduto({
+          nome: form.nome,
+          descricao: form.descricao,
+          preco: parseFloat(form.preco),
+          estoque: parseInt(form.estoque),
+          categoria: 'geral',
+          foto: form.foto || undefined
+        });
+      }
+      limparFormulario();
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
     }
-    limparFormulario();
-  } catch (error) {
-    console.error('Erro ao salvar produto:', error);
-  }
-};
-
-  const iniciarEdicao = (produto: any) => {
-    setEditandoId(produto.id);
+  };
+  const iniciarEdicao = (produto: { 
+    id: string | number; 
+    nome: string; 
+    descricao: string; 
+    preco: number; 
+    estoque: number; 
+    tamanho?: string; 
+  }) => {
+    setEditandoId(produto.id.toString());
     setForm({
       nome: produto.nome,
       descricao: produto.descricao,
