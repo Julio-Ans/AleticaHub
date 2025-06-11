@@ -8,6 +8,8 @@ export interface Mensagem {
   esporteId: string; // "0" para chat geral
   texto: string;
   criadaEm: string;
+  editada?: boolean;
+  fixada?: boolean;
   remetente: {
     nome: string;
     email: string;
@@ -39,13 +41,50 @@ class MensagensService extends AtleticaHubAPI {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  }  // Excluir mensagem (admin ou próprio usuário)
+  async excluirMensagem(id: string): Promise<{ message: string }> {
+    try {
+      return await this.request(`/api/mensagens/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      // Se o endpoint não existe (404/405), mostrar mensagem apropriada
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('405'))) {
+        throw new Error('Funcionalidade de excluir mensagens ainda não implementada no servidor');
+      }
+      throw error;
+    }
+  }
+  // Fixar/desfixar mensagem (apenas admin)
+  async fixarMensagem(id: string, fixada: boolean): Promise<Mensagem> {
+    try {
+      return await this.request(`/api/mensagens/${id}/fixar`, {
+        method: 'POST',
+        body: JSON.stringify({ fixada })
+      });
+    } catch (error) {
+      // Se o endpoint não existe (404/405), mostrar mensagem apropriada
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('405'))) {
+        throw new Error('Funcionalidade de fixar mensagens ainda não implementada no servidor');
+      }
+      throw error;
+    }
   }
 
-  // Excluir mensagem (admin ou próprio usuário)
-  async excluirMensagem(id: string): Promise<{ message: string }> {
-    return this.request(`/api/mensagens/${id}`, {
-      method: 'DELETE'
-    });
+  // Editar mensagem (próprio usuário ou admin)
+  async editarMensagem(id: string, texto: string): Promise<Mensagem> {
+    try {
+      return await this.request(`/api/mensagens/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ texto })
+      });
+    } catch (error) {
+      // Se o endpoint não existe (404/405), mostrar mensagem apropriada
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('405'))) {
+        throw new Error('Funcionalidade de editar mensagens ainda não implementada no servidor');
+      }
+      throw error;
+    }
   }
 }
 

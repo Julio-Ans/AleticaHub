@@ -9,4 +9,5 @@ export { useInscricoes } from './useInscricoes';
 export { useMensagens } from './useMensagens';
 export { usePedidos } from './usePedidos';
 export { useProdutos } from './useProdutos';
+export { useToast } from './useToast';
 export { useUsuarios } from './useUsuarios';

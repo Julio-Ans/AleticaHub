@@ -5,14 +5,17 @@ import { FaHome, FaSearch, FaShoppingCart, FaSpinner, FaPlus, FaMinus, FaTag, Fa
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/context/CartContext';
 import { useProdutos } from '@/hooks/useProdutos';
+import { useCarrinho } from '@/hooks/useCarrinho';
+import { useToast } from '@/hooks/useToast';
+import { ToastContainer } from '@/components/Toast';
 import { Produto } from '@/services/api/produtosApi';
 
 export default function ShopPage() {
   const { user } = useAuth();
-  const { addToCart } = useCart();
   const { produtos, isLoading: produtosLoading, error } = useProdutos();
+  const { adicionarItem } = useCarrinho();
+  const { toasts, removeToast, success, error: showError } = useToast();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -62,20 +65,25 @@ export default function ShopPage() {
       const newQuantity = Math.max(1, currentQuantity + change);
       return { ...prev, [produtoId]: newQuantity };
     });
-  };
-
-  const handleAddToCart = (produto: Produto) => {
+  };  const handleAddToCart = async (produto: Produto) => {
     const quantity = quantities[produto.id.toString()] || 1;
-    addToCart({
-      productId: produto.id.toString(),
-      name: produto.nome,
-      price: produto.preco,
-      quantity: quantity,
-      size: 'default'
-    });
     
-    // Reset quantity after adding to cart
-    setQuantities(prev => ({ ...prev, [produto.id.toString()]: 1 }));
+    try {
+      // Usar o hook useCarrinho para adicionar item com feedback
+      await adicionarItem({
+        produtoId: typeof produto.id === 'string' ? parseInt(produto.id) : produto.id,
+        quantidade: quantity
+      });
+      
+      // Mostrar toast de sucesso
+      success(`${produto.nome} adicionado ao carrinho! (${quantity}x)`);
+      
+      // Reset quantity after adding to cart
+      setQuantities(prev => ({ ...prev, [produto.id.toString()]: 1 }));
+    } catch (error) {
+      // Mostrar toast de erro
+      showError(error instanceof Error ? error.message : 'Erro ao adicionar ao carrinho');
+    }
   };
 
   if (!user) {
@@ -269,9 +277,7 @@ export default function ShopPage() {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Informação sobre o carrinho */}
+      )}      {/* Informação sobre o carrinho */}
       <div className="bg-blue-900/20 border border-blue-500 rounded-lg p-4 mt-6">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-blue-400 font-semibold">💡 Dica</span>
@@ -280,6 +286,9 @@ export default function ShopPage() {
           Adicione produtos ao carrinho e finalize sua compra. O carrinho fica salvo enquanto você navega pela loja.
         </p>
       </div>
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </div>
   );
 }

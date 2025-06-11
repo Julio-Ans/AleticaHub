@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { FaRunning, FaCalendarAlt, FaComments, FaStore, FaCrown, FaUser, FaEdit, FaSignOutAlt } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 import { useEsportes } from '@/hooks/useEsportes';
@@ -9,11 +10,25 @@ import { useEventos } from '@/hooks/useEventos';
 import ModalMensagens from '@/components/ModalMensagens';
 
 export default function HomePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
   const { esportes, isLoading: esportesLoading, error: esportesError } = useEsportes();
   const { eventos, isLoading: eventosLoading, error: eventosError } = useEventos();
   // const { minhasInscricoes } = useInscricoes(); // TODO: Implementar uso das inscrições
   const [modalMensagensOpen, setModalMensagensOpen] = useState(false);
+
+  // Redirecionamento automático para login se não autenticado
+  useEffect(() => {
+    // Aguardar um pouco para garantir que a verificação de autenticação foi concluída
+    const timeout = setTimeout(() => {
+      if (!isAuthenticated && !user) {
+        console.log('🔄 HomePage: Usuário não autenticado, redirecionando para login');
+        router.push('/login');
+      }
+    }, 1000); // 1 segundo de delay para evitar redirecionamentos prematuros
+
+    return () => clearTimeout(timeout);
+  }, [isAuthenticated, user, router]);
   
   // Debug logs MAIS DETALHADOS para verificar carregamento
   console.log('🏠 HomePage RENDERIZADA:');
@@ -41,6 +56,16 @@ export default function HomePage() {
     })));
   } else {
     console.log('🏠 ⚠️ NENHUM EVENTO CARREGADO!');
+  }  // Mostrar loading enquanto verifica autenticação
+  if (!isAuthenticated && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
   }
 
   const handleLogout = async () => {
@@ -49,7 +74,7 @@ export default function HomePage() {
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
-  };  return (
+  };return (
     <div className="min-h-screen bg-gray-950">
       <div className="flex">
         {/* Sidebar do Usuário */}

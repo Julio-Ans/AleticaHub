@@ -97,7 +97,6 @@ export const useMensagens = (esporteId: string) => {
       throw err;
     }
   }, [esporteId, isAuthenticated]);
-
   // Excluir mensagem (admin ou próprio usuário)
   const excluirMensagem = useCallback(async (mensagemId: string) => {
     if (!isAuthenticated) return;
@@ -108,6 +107,38 @@ export const useMensagens = (esporteId: string) => {
     } catch (err) {
       console.error('Erro ao excluir mensagem:', err);
       setError(err instanceof Error ? err.message : 'Erro ao excluir mensagem');
+      throw err;
+    }
+  }, [isAuthenticated]);
+
+  // Fixar/desfixar mensagem (apenas admin)
+  const fixarMensagem = useCallback(async (mensagemId: string, fixada: boolean) => {
+    if (!isAuthenticated || user?.role !== 'admin') return;
+    
+    try {
+      const mensagemAtualizada = await mensagensService.fixarMensagem(mensagemId, !fixada);
+      setMensagens(prev => prev.map(msg => 
+        msg.id === mensagemId ? mensagemAtualizada : msg
+      ));
+    } catch (err) {
+      console.error('Erro ao fixar mensagem:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao fixar mensagem');
+      throw err;
+    }
+  }, [isAuthenticated, user?.role]);
+
+  // Editar mensagem (próprio usuário ou admin)
+  const editarMensagem = useCallback(async (mensagemId: string, texto: string) => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const mensagemAtualizada = await mensagensService.editarMensagem(mensagemId, texto);
+      setMensagens(prev => prev.map(msg => 
+        msg.id === mensagemId ? mensagemAtualizada : msg
+      ));
+    } catch (err) {
+      console.error('Erro ao editar mensagem:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao editar mensagem');
       throw err;
     }
   }, [isAuthenticated]);
@@ -139,13 +170,14 @@ export const useMensagens = (esporteId: string) => {
 
     return () => clearInterval(interval);
   }, [carregarMensagens, isAuthenticated, esporteId]);
-
   return {
     mensagens,
     isLoading,
     error,
     enviarMensagem,
     excluirMensagem,
+    fixarMensagem,
+    editarMensagem,
     carregarMensagens,
     podeExcluirMensagem,
     setError

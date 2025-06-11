@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { FaImage, FaTimes, FaShoppingCart, FaPlus, FaMinus } from 'react-icons/fa';
-import { useCart } from '@/context/CartContext';
+import { useCarrinho } from '@/hooks/useCarrinho';
+import { useToast } from '@/hooks/useToast';
 import { type Produto } from '@/services/api';
 
 interface ModalProdutoProps {
@@ -16,7 +17,8 @@ export default function ModalProduto({ isOpen, onClose, produto }: ModalProdutoP
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
-  const { addToCart } = useCart();
+  const { adicionarItem } = useCarrinho();
+  const { success, error: showError } = useToast();
 
   // Reset state when modal opens/closes
   const handleClose = () => {
@@ -25,18 +27,18 @@ export default function ModalProduto({ isOpen, onClose, produto }: ModalProdutoP
     setShowSuccess(false);
     onClose();
   };
-
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSize || !produto) return;
     
     try {
-      addToCart({
-        productId: produto.id.toString(),
-        name: produto.nome,
-        price: produto.preco,
-        size: selectedSize,
-        quantity,
+      // Usar o hook useCarrinho para adicionar item com feedback
+      await adicionarItem({
+        produtoId: typeof produto.id === 'string' ? parseInt(produto.id) : produto.id,
+        quantidade: quantity
       });
+      
+      // Mostrar toast de sucesso
+      success(`${produto.nome} adicionado ao carrinho! (${quantity}x)`);
       
       setShowSuccess(true);
       setTimeout(() => {
@@ -45,6 +47,7 @@ export default function ModalProduto({ isOpen, onClose, produto }: ModalProdutoP
       }, 1500);
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
+      showError(error instanceof Error ? error.message : 'Erro ao adicionar ao carrinho');
     }
   };
 

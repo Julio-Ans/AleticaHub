@@ -62,16 +62,16 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
   }, [isOpen, gruposDisponiveis, grupoSelecionado]);
 
   // Determina o esporteId baseado no grupo selecionado
-  const esporteId = grupoSelecionado;
-  
-  const {
+  const esporteId = grupoSelecionado;    const {
     mensagens,
     carregarMensagens,
     enviarMensagem,
+    excluirMensagem,
+    fixarMensagem,
     isLoading,
     error,
     setError
-  } = useMensagens(esporteId || '');  // Carregar mensagens quando o modal abrir ou o grupo mudar
+  } = useMensagens(esporteId || '');// Carregar mensagens quando o modal abrir ou o grupo mudar
   useEffect(() => {
     if (isOpen && esporteId) {
       console.log('🔄 ModalMensagens: Carregando mensagens para grupo:', {
@@ -92,18 +92,28 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       });
     }
   }, [isOpen, esporteId, carregarMensagens, setError, grupoSelecionado, gruposDisponiveis]);
-
   // Auto-scroll para o final quando as mensagens mudarem
   useEffect(() => {
     if (mensagensRef.current && mensagens.length > 0) {
-      requestAnimationFrame(() => {
+      // Usar setTimeout para garantir que o DOM foi atualizado
+      setTimeout(() => {
         if (mensagensRef.current) {
           mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
         }
-      });
+      }, 100);
     }
   }, [mensagens]);
 
+  // Auto-scroll inicial quando o modal abrir
+  useEffect(() => {
+    if (isOpen && mensagensRef.current) {
+      setTimeout(() => {
+        if (mensagensRef.current) {
+          mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
+        }
+      }, 200);
+    }
+  }, [isOpen, grupoSelecionado]);
   const handleEnviarMensagem = async () => {
     if (!novaMensagem.trim() || !esporteId) {
       return;
@@ -118,7 +128,8 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
         if (mensagensRef.current) {
           mensagensRef.current.scrollTop = mensagensRef.current.scrollHeight;
         }
-      }, 100);    } catch (error) {
+      }, 150);
+    } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       // Exibir erro para o usuário apenas se não for um erro esperado
       if (error instanceof Error) {
@@ -132,6 +143,31 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
       } else {
         setError('Erro ao enviar mensagem. Tente novamente.');
       }
+    }
+  };
+
+  // Função para excluir mensagem
+  const handleExcluirMensagem = async (mensagemId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta mensagem?')) return;
+    
+    try {
+      await excluirMensagem(mensagemId);
+      // Recarregar mensagens após exclusão
+      carregarMensagens();
+    } catch (error) {
+      console.error('Erro ao excluir mensagem:', error);
+      setError('Erro ao excluir mensagem. Tente novamente.');
+    }
+  };
+  // Função para fixar/desfixar mensagem (admin)
+  const handleFixarMensagem = async (mensagemId: string, fixada: boolean) => {
+    if (user?.role !== 'admin') return;
+    
+    try {
+      await fixarMensagem(mensagemId, fixada);
+    } catch (error) {
+      console.error('Erro ao fixar mensagem:', error);
+      setError('Erro ao fixar mensagem. Tente novamente.');
     }
   };
   const formatarData = (data: string) => {
@@ -237,30 +273,61 @@ export default function ModalMensagens({ isOpen, onClose, esportes }: ModalMensa
                     ? 'Nenhuma mensagem no chat geral ainda. Seja o primeiro a enviar uma mensagem!'
                     : 'Nenhuma mensagem neste esporte ainda. Seja o primeiro a enviar uma mensagem!'
                   }
-                </div>) : (
-                mensagens.map((mensagem, index) => (
+                </div>) : (                mensagens.map((mensagem, index) => (
                   <div
                     key={`mensagem-${mensagem.id || index}`}
                     className={`flex ${
                       mensagem.remetenteId === user?.id ? 'justify-end' : 'justify-start'
                     }`}
                   >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                        mensagem.remetenteId === user?.id
-                          ? 'bg-red-600 text-white'
-                          : 'bg-gray-800 text-gray-200'
-                      }`}
-                    >                      {mensagem.remetenteId !== user?.id && (
-                        <div className="text-xs text-gray-400 mb-1">
-                          {obterNomeRemetente(mensagem)}
+                    <div className="max-w-[80%] group">
+                      <div
+                        className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+                          mensagem.remetenteId === user?.id
+                            ? 'bg-red-600 text-white'
+                            : 'bg-gray-800 text-gray-200'
+                        } ${mensagem.fixada ? 'ring-2 ring-yellow-500' : ''}`}
+                      >
+                        {mensagem.fixada && (
+                          <div className="text-xs text-yellow-300 mb-1 flex items-center gap-1">
+                            📌 Mensagem fixada
+                          </div>
+                        )}
+                        {mensagem.remetenteId !== user?.id && (
+                          <div className="text-xs text-gray-400 mb-1">
+                            {obterNomeRemetente(mensagem)}
+                          </div>
+                        )}
+                        <div className="text-sm">
+                          {obterTextoMensagem(mensagem)}
                         </div>
-                      )}
-                      <div className="text-sm">
-                        {obterTextoMensagem(mensagem)}
+                        <div className="text-xs opacity-75 mt-1">
+                          {formatarData(mensagem.criadaEm)}
+                          {mensagem.editada && <span className="ml-1">(editada)</span>}
+                        </div>
                       </div>
-                      <div className="text-xs opacity-75 mt-1">
-                        {formatarData(mensagem.criadaEm)}
+                        {/* Botões de ação */}
+                      <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        {/* Apenas admins podem fixar mensagens */}
+                        {user?.role === 'admin' && (
+                          <button
+                            onClick={() => handleFixarMensagem(mensagem.id, mensagem.fixada || false)}
+                            className="text-yellow-500 hover:text-yellow-400 text-xs p-1"
+                            title={mensagem.fixada ? "Desfixar mensagem" : "Fixar mensagem"}
+                          >
+                            📌
+                          </button>
+                        )}
+                        {/* Usuário pode excluir suas próprias mensagens, admin pode excluir qualquer uma */}
+                        {(mensagem.remetenteId === user?.id || user?.role === 'admin') && (
+                          <button
+                            onClick={() => handleExcluirMensagem(mensagem.id)}
+                            className="text-red-500 hover:text-red-400 text-xs p-1"
+                            title="Excluir mensagem"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

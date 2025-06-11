@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { FaHome, FaTrash, FaEdit, FaThumbsUp } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
@@ -22,7 +22,8 @@ export default function ChatPage() {  const { id } = useParams();
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [novaMensagem, setNovaMensagem] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [novoConteudo, setNovoConteudo] = useState('');  const [loading, setLoading] = useState(true);
+  const [novoConteudo, setNovoConteudo] = useState('');
+  const mensagensRef = useRef<HTMLDivElement>(null);  const [loading, setLoading] = useState(true);
   const [permitido, setPermitido] = useState(false);
   
   const carregarMensagens = useCallback(async () => {
@@ -170,10 +171,8 @@ export default function ChatPage() {  const { id } = useParams();
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold mb-4">{nomeGrupo}</h1>
-
-      {/* Mensagens */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-96 overflow-y-auto space-y-3 mb-4">
+      <h1 className="text-2xl font-bold mb-4">{nomeGrupo}</h1>      {/* Mensagens */}
+      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-96 overflow-y-auto space-y-3 mb-4" ref={mensagensRef}>
         {mensagens.length === 0 ? (
           <p className="text-gray-400 text-center">Nenhuma mensagem ainda</p>
         ) : (

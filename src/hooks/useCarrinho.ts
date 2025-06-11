@@ -31,8 +31,7 @@ export const useCarrinho = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user?.id, user?.nome]);
-  // Adicionar item ao carrinho
+  }, [isAuthenticated, user?.id, user?.nome]);  // Adicionar item ao carrinho
   const adicionarItem = async (data: AddToCartData) => {
     try {
       setIsLoading(true);
@@ -47,6 +46,9 @@ export const useCarrinho = () => {
       
       await carrinhoService.adicionarItem(data);
       await carregarCarrinho();
+      
+      // Retornar sucesso para que o componente possa mostrar feedback
+      return { success: true, produto };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar item';
       setError(errorMessage);
