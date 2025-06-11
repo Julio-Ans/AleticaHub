@@ -31,13 +31,23 @@ export const useMensagens = (esporteId: string) => {
         total: data.length,
         isChatGeral: esporteId === '0',
         rawData: data,
-        mensagens: data.map(msg => ({
+        primeiraMensagem: data[0] ? {
+          id: data[0].id,
+          texto: data[0].texto,
+          remetente: data[0].remetente,
+          remetenteId: data[0].remetenteId,
+          esporteId: data[0].esporteId,
+          todasAsChaves: Object.keys(data[0]),
+          estruturaCompleta: JSON.stringify(data[0], null, 2)
+        } : 'Nenhuma mensagem',
+        todasAsMensagens: data.map((msg, index) => ({
+          index,
           id: msg.id,
-          texto: msg.texto,
+          texto: msg.texto?.substring(0, 30) + '...',
           remetente: msg.remetente,
           remetenteId: msg.remetenteId,
-          esporteId: msg.esporteId,
-          allKeys: Object.keys(msg)
+          temNome: !!msg.remetente?.nome,
+          nomeEncontrado: msg.remetente?.nome || 'SEM NOME'
         }))
       });
       
@@ -75,23 +85,31 @@ export const useMensagens = (esporteId: string) => {
       console.log('❌ useMensagens: Envio cancelado -', motivo);
       return;
     }
-    
-    try {
-      const data: CreateMensagemData = {
+      try {      const data: CreateMensagemData = {
         esporteId,
-        texto: conteudo.trim() // Corrigido para enviar 'texto'
+        conteudo: conteudo.trim()
       };
       
+      console.log('🌐 useMensagens: Dados sendo enviados para API:', data);
+      
       const novaMensagem = await mensagensService.enviarMensagem(data);
-      console.log('✅ useMensagens: Mensagem enviada, atualizando lista');
+      console.log('✅ useMensagens: Mensagem enviada, resposta da API:', novaMensagem);
+      console.log('✅ useMensagens: Atualizando lista de mensagens');
       setMensagens(prev => [...prev, novaMensagem]);
       return novaMensagem;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao enviar mensagem';
       
+      console.error('❌ useMensagens: Erro ao enviar mensagem:', {
+        error: err,
+        errorMessage,
+        errorStack: err instanceof Error ? err.stack : 'No stack',
+        esporteId,
+        conteudo: conteudo?.substring(0, 50) + '...'
+      });
+      
       // Silenciar erros de "não encontrado" 
       if (!errorMessage.includes('não encontrado')) {
-        console.error('Erro ao enviar mensagem:', err);
         setError(errorMessage);
       }
       throw err;
@@ -125,19 +143,41 @@ export const useMensagens = (esporteId: string) => {
       setError(err instanceof Error ? err.message : 'Erro ao fixar mensagem');
       throw err;
     }
-  }, [isAuthenticated, user?.role]);
-
-  // Editar mensagem (próprio usuário ou admin)
-  const editarMensagem = useCallback(async (mensagemId: string, texto: string) => {
+  }, [isAuthenticated, user?.role]);  // Editar mensagem (próprio usuário ou admin)
+  const editarMensagem = useCallback(async (mensagemId: string, conteudo: string) => {
     if (!isAuthenticated) return;
     
     try {
-      const mensagemAtualizada = await mensagensService.editarMensagem(mensagemId, texto);
-      setMensagens(prev => prev.map(msg => 
-        msg.id === mensagemId ? mensagemAtualizada : msg
-      ));
+      console.log('📝 useMensagens: Editando mensagem', { mensagemId, conteudo: conteudo.substring(0, 50) + '...' });
+      
+      const mensagemAtualizada = await mensagensService.editarMensagem(mensagemId, conteudo);
+      
+      console.log('✅ useMensagens: Mensagem editada, atualizando estado', {
+        mensagemAtualizada,
+        mensagemId,
+        estruturaRetorno: mensagemAtualizada ? Object.keys(mensagemAtualizada) : 'null'
+      });
+      
+      // Atualizar mensagem no estado local usando tanto id quanto _id para comparação
+      setMensagens(prev => prev.map(msg => {
+        const msgId = msg.id || msg._id;
+        const isMatch = msgId === mensagemId;
+        
+        if (isMatch) {
+          console.log('🔄 useMensagens: Substituindo mensagem no estado', {
+            msgIdOriginal: msgId,
+            mensagemIdBuscado: mensagemId,
+            mensagemOriginal: msg,
+            mensagemAtualizada
+          });
+        }
+        
+        return isMatch ? mensagemAtualizada : msg;
+      }));
+      
+      console.log('✅ useMensagens: Estado das mensagens atualizado');
     } catch (err) {
-      console.error('Erro ao editar mensagem:', err);
+      console.error('❌ useMensagens: Erro ao editar mensagem:', err);
       setError(err instanceof Error ? err.message : 'Erro ao editar mensagem');
       throw err;
     }
