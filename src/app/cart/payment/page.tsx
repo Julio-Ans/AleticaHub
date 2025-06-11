@@ -1,9 +1,9 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 
-export default function PaymentPage() {
+function PaymentContent() {
   const searchParams = useSearchParams();
   const pedidoId = searchParams.get('pedidoId');
 
@@ -70,8 +70,7 @@ export default function PaymentPage() {
               {!pagamentoConfirmado ? (
                 <button onClick={confirmarPagamento} className="w-full bg-red-700 hover:bg-red-600 py-3 rounded font-bold mt-6">
                   CONFIRMAR PAGAMENTO
-                </button>
-              ) : (
+                </button>              ) : (
                 <p className="text-green-500 text-center font-bold mt-4">Pagamento confirmado com sucesso!</p>
               )}
             </div>
@@ -79,5 +78,13 @@ export default function PaymentPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Carregando...</div>}>
+      <PaymentContent />
+    </Suspense>
   );
 }

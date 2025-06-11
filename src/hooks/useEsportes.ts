@@ -82,9 +82,9 @@ export const useEsportes = () => {
     } finally {
       setIsLoading(false);
     }
-  };  // Carregar esportes no mount - FORÇAR carregamento imediato
+  };  // Carregar esportes no mount
   useEffect(() => {
-    console.log('🏃 useEsportes iniciando - carregando esportes FORÇADAMENTE');
+    console.log('🏃 useEsportes iniciando - carregando esportes');
     
     const loadData = async () => {
       try {
@@ -98,17 +98,13 @@ export const useEsportes = () => {
         console.error('❌ Erro ao carregar esportes:', err);
         const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar esportes';
         setError(errorMessage);
-        // Em caso de erro, tentar novamente após um delay
-        setTimeout(() => {
-          console.log('🔄 Tentando recarregar esportes após erro...');
-          loadData();
-        }, 2000);
+        // Não fazer retry automático para evitar loops infinitos
+        // O usuário pode tentar novamente manualmente se necessário
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Carregar IMEDIATAMENTE ao montar o componente
     loadData();
   }, []); // Sem dependências para carregar apenas uma vez no mount
 

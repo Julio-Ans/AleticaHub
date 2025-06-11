@@ -27,15 +27,17 @@ export const useMensagens = (esporteId: string) => {
     try {
       setIsLoading(true);
       setError(null);      console.log(`🔄 Carregando mensagens para esporte: ${esporteId} (Chat Geral: ${esporteId === '0'})`);
-        const data = await mensagensService.buscarMensagens(esporteId);
-      console.log(`📨 Mensagens recebidas para esporte ${esporteId}:`, {
+        const data = await mensagensService.buscarMensagens(esporteId);      console.log(`📨 Mensagens recebidas para esporte ${esporteId}:`, {
         total: data.length,
         isChatGeral: esporteId === '0',
+        rawData: data,
         mensagens: data.map(msg => ({
           id: msg.id,
-          texto: msg.texto?.substring(0, 50) + '...',
-          remetente: msg.remetente?.nome,
-          esporteId: msg.esporteId
+          texto: msg.texto,
+          remetente: msg.remetente,
+          remetenteId: msg.remetenteId,
+          esporteId: msg.esporteId,
+          allKeys: Object.keys(msg)
         }))
       });
       

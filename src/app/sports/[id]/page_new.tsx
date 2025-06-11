@@ -237,12 +237,11 @@ export default function SportDetailPage() {
                         {mensagem.remetenteId !== user?.id && (
                           <div className="text-xs text-gray-400 mb-1">
                             {mensagem.remetente?.nome || 'Usuário'}
-                          </div>
-                        )}
-                        
-                        <div>{mensagem.conteudo}</div>
-                        
-                        <div className="text-xs opacity-75 mt-1 flex justify-between items-center">
+                          </div>                )}
+
+                <div>{mensagem.texto}</div>
+
+                <div className="text-xs opacity-75 mt-1 flex justify-between items-center">
                           <span>{formatDate(mensagem.criadaEm)}</span>
                           
                           {podeExcluirMensagem(mensagem) && (

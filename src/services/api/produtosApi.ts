@@ -84,14 +84,10 @@ class ProdutosService extends AtleticaHubAPI {  // Listar produtos com pagina√ß√
     
     if (data.foto) {
       formData.append('foto', data.foto);
-    }
-
-    return this.request('/api/produtos', {
+    }    return this.request('/api/produtos', {
       method: 'POST',
       body: formData,
-      headers: {
-        'Authorization': `Bearer ${this.token}`
-      }
+      headers: await this.getHeaders()
     });
   }
 

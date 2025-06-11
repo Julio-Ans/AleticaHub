@@ -77,14 +77,10 @@ class EventosService extends AtleticaHubAPI {  // Listar todos os eventos
     
     if (data.foto) {
       formData.append('foto', data.foto);
-    }
-
-    return this.request('/api/eventos', {
+    }    return this.request('/api/eventos', {
       method: 'POST',
       body: formData,
-      headers: {
-        'Authorization': `Bearer ${this.token}`
-      }
+      headers: await this.getHeaders()
     });
   }
 

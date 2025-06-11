@@ -1,7 +1,7 @@
 // Hook para gerenciar produtos
 
 import { useState, useEffect, useCallback } from 'react';
-import { produtosService, type Produto, type CreateProdutoData, type UpdateProdutoData, type ProdutosResponse } from '../services/api';
+import { produtosService, type Produto, type CreateProdutoData, type UpdateProdutoData } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const useProdutos = () => {
@@ -182,13 +182,20 @@ export const useProdutos = () => {
   // Verificar se produto está em estoque
   const verificarEstoque = (produto: Produto, quantidade: number = 1): boolean => {
     return produto.estoque >= quantidade;
-  };
-
-  // Carregar dados iniciais
+  };  // Carregar dados iniciais
   useEffect(() => {
-    carregarProdutos();
-    carregarCategorias();
-  }, [carregarProdutos, carregarCategorias]);
+    const loadInitialData = async () => {
+      try {
+        await carregarProdutos();
+        await carregarCategorias();
+      } catch (err) {
+        console.error('Erro ao carregar dados iniciais dos produtos:', err);
+      }
+    };
+
+    loadInitialData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Carregar apenas uma vez no mount
 
   return {
     produtos,

@@ -311,10 +311,9 @@ export default function SportDetailPage() {
                                   >
                                     <FaTrash />
                                   </button></div>
-                              )}
-                            </div>
+                              )}                            </div>
                           </div>
-                          <p className="text-sm text-gray-300">{mensagem.conteudo}</p>
+                          <p className="text-sm text-gray-300">{mensagem.texto}</p>
                         </div>
                       );})
                     )}

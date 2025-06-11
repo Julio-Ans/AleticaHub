@@ -3,6 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { FaTimes, FaPlus, FaEdit, FaTrash, FaImage } from 'react-icons/fa';
 import { useEsportes } from '../hooks/useEsportes';
 import { type Esporte } from '../services/api';
@@ -148,12 +149,13 @@ export default function ModalEsportes({ isOpen, onClose }: ModalEsportesProps) {
               ) : (
                 <div className="space-y-4">
                   {esportes.map((esporte) => (
-                    <div key={esporte.id} className="border rounded-lg p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
+                    <div key={esporte.id} className="border rounded-lg p-4 flex items-center justify-between">                      <div className="flex items-center space-x-4">
                         {esporte.fotoUrl ? (
-                          <img
+                          <Image
                             src={esporte.fotoUrl}
                             alt={esporte.nome}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 rounded-lg object-cover"
                           />
                         ) : (
