@@ -3,17 +3,19 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaRunning, FaCalendarAlt, FaComments, FaStore, FaCrown, FaUser, FaEdit, FaSignOutAlt } from 'react-icons/fa';
+import { FaRunning, FaCalendarAlt, FaComments, FaStore, FaCrown, FaUser, FaEdit, FaSignOutAlt, FaClock, FaMapMarkerAlt } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 import { useEsportes } from '@/hooks/useEsportes';
 import { useEventos } from '@/hooks/useEventos';
+import { useInscricoes } from '@/hooks/useInscricoes';
 import ModalMensagens from '@/components/ModalMensagens';
 
 export default function HomePage() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const { esportes, isLoading: esportesLoading, error: esportesError } = useEsportes();
-  const { eventos, isLoading: eventosLoading, error: eventosError } = useEventos();
+  const { eventos, meusEventos, isLoading: eventosLoading, error: eventosError } = useEventos();
+  const { minhasInscricoes } = useInscricoes();
   // const { minhasInscricoes } = useInscricoes(); // TODO: Implementar uso das inscrições
   const [modalMensagensOpen, setModalMensagensOpen] = useState(false);
 
@@ -107,6 +109,123 @@ export default function HomePage() {
                   <span>Painel Admin</span>
                 </Link>
               )}
+            </div>            {/* Calendário dos Meus Eventos */}
+            <div className="mt-6">
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <FaCalendarAlt className="text-blue-400" />
+                    Próximos Eventos
+                  </h3>
+                  <Link 
+                    href="/calendar"
+                    className="text-blue-400 hover:text-blue-300 text-xs underline"
+                  >
+                    Ver todos
+                  </Link>
+                </div>
+
+                {eventosLoading ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                    <p className="text-gray-400 text-xs">Carregando...</p>
+                  </div>
+                ) : (() => {
+                  // Filtrar eventos baseados nas inscrições aprovadas
+                  const eventosCalendario = meusEventos.filter(evento => {
+                    // Eventos gerais são visíveis para todos os usuários autenticados
+                    if (evento.esporteId === "0") {
+                      return true;
+                    }
+                    
+                    // Eventos de esporte são visíveis apenas se o usuário tem inscrição aprovada
+                    const inscricaoAprovada = minhasInscricoes.find(
+                      inscricao => inscricao.esporteId === evento.esporteId && inscricao.status === 'aceito'
+                    );
+                    
+                    return !!inscricaoAprovada;
+                  });
+
+                  // Pegar apenas os próximos 3 eventos
+                  const proximosEventos = eventosCalendario
+                    .filter(evento => new Date(evento.data) >= new Date())
+                    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
+                    .slice(0, 3);
+
+                  const formatarData = (dataISO: string) => {
+                    const data = new Date(dataISO);
+                    return {
+                      data: data.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit'
+                      }),
+                      hora: data.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    };
+                  };
+
+                  const formatarTipoEvento = (tipo: string, esporteId?: string) => {
+                    if (esporteId === "0") return 'Geral';
+                    if (tipo === 'treino') return 'Treino';
+                    return tipo.charAt(0).toUpperCase() + tipo.slice(1);
+                  };
+
+                  return proximosEventos.length === 0 ? (
+                    <div className="text-center py-4">
+                      <FaCalendarAlt className="text-gray-600 text-2xl mx-auto mb-2" />
+                      <p className="text-gray-400 text-xs">Nenhum evento próximo</p>
+                      <Link 
+                        href="/sports"
+                        className="text-blue-400 hover:text-blue-300 text-xs underline mt-1 block"
+                      >
+                        Inscreva-se em esportes
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {proximosEventos.map((evento) => {
+                        const { data, hora } = formatarData(evento.data);
+                        const tipoEvento = formatarTipoEvento(evento.tipo, evento.esporteId);
+
+                        return (
+                          <Link
+                            key={evento._id}
+                            href={`/events/${evento._id}`}
+                            className="block bg-gray-700 hover:bg-gray-600 rounded-lg p-3 transition-colors border border-gray-600 hover:border-blue-500"
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h4 className="font-medium text-white text-sm leading-tight">
+                                {evento.titulo}
+                              </h4>
+                              <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                {tipoEvento}
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1 text-xs text-gray-300">
+                                <FaCalendarAlt className="text-blue-400" />
+                                <span>{data}</span>
+                                <FaClock className="text-blue-400 ml-2" />
+                                <span>{hora}</span>
+                              </div>
+                              
+                              {evento.local && (
+                                <div className="flex items-center gap-1 text-xs text-gray-400">
+                                  <FaMapMarkerAlt className="text-blue-400" />
+                                  <span className="truncate">{evento.local}</span>
+                                </div>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           </div>
           
