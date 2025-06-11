@@ -30,8 +30,7 @@ export interface RegisterData {
   codigo?: string;
 }
 
-class AuthAPI extends AtleticaHubAPI {
-  async login(email: string, password: string): Promise<AuthResponse> {
+class AuthAPI extends AtleticaHubAPI {  async login(email: string, password: string): Promise<AuthResponse> {
     try {
       console.log('🔄 Tentando login...');
       
@@ -39,10 +38,14 @@ class AuthAPI extends AtleticaHubAPI {
       const idToken = await firebaseService.signIn(email, password);
       console.log('✅ Firebase OK, enviando para backend...');
       
+      // Enviar o token no header Authorization em vez do body
       const response = await this.request<AuthResponse>('/auth/login', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({ 
-          idToken,
           email: email,
           displayName: email.split('@')[0]
         }),
