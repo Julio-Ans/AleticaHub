@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { FaHome, FaStore, FaCalendarAlt, FaComments, FaUserShield, FaRunning, FaCalendar, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaStore, FaCalendarAlt, FaComments, FaUserShield, FaRunning, FaCalendar, FaSignOutAlt, FaShoppingBag } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Sidebar() {
@@ -24,7 +24,6 @@ export default function Sidebar() {
 
   const isActive = (path: string) =>
     pathname.startsWith(path) ? 'text-white font-bold bg-red-900' : 'text-red-200 hover:text-white hover:bg-red-700';
-
   const menuItems = [
     { href: '/home', icon: FaHome, label: 'Home' },
     { href: '/sports', icon: FaRunning, label: 'Esportes' },
@@ -32,6 +31,7 @@ export default function Sidebar() {
     { href: '/shop', icon: FaStore, label: 'Loja' },
     { href: '/chat', icon: FaComments, label: 'Chat' },
     { href: '/calendar', icon: FaCalendar, label: 'Meu Calendário' },
+    { href: '/orders', icon: FaShoppingBag, label: 'Meus Pedidos' },
   ];
 
   const adminMenuItems = [

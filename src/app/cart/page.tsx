@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { FaHome, FaArrowLeft, FaTrash, FaSpinner, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import { useCarrinho } from '@/hooks/useCarrinho';
 import { useAuth } from '@/context/AuthContext';
 
 export default function CartPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { 
     itens, 
     isLoading, 
@@ -15,7 +17,8 @@ export default function CartPage() {
     valorTotal,
     atualizarItem, 
     removerItem, 
-    limparCarrinho
+    limparCarrinho,
+    finalizarPedido
   } = useCarrinho();
 
   if (!user) {
@@ -55,6 +58,16 @@ export default function CartPage() {
       } catch (error) {
         console.error('Erro ao remover item:', error);
       }
+    }
+  };  const handleFinalizarCompra = async () => {
+    try {
+      const pedido = await finalizarPedido();
+      alert(`Pedido #${pedido.id} realizado com sucesso! Status: ${pedido.status}`);
+      // Usar o router do Next.js em vez de window.location para evitar logout automático
+      router.push('/orders');
+    } catch (error) {
+      console.error('Erro ao finalizar compra:', error);
+      alert('Erro ao finalizar compra. Tente novamente.');
     }
   };
 
@@ -197,21 +210,20 @@ export default function CartPage() {
                 <span className="text-2xl font-bold text-red-400">
                   R$ {total.toFixed(2)}
                 </span>
-              </div>
-
-              <div className="flex gap-4">
+              </div>              <div className="flex gap-4">
                 <Link
                   href="/shop"
                   className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 px-6 rounded-lg text-center transition-colors"
                 >
                   Continuar Comprando
                 </Link>
-                <Link
-                  href="/cart/checkout"
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg text-center transition-colors"
+                <button
+                  onClick={handleFinalizarCompra}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading}
                 >
-                  Finalizar Compra
-                </Link>
+                  {isLoading ? 'Processando...' : 'Finalizar Compra'}
+                </button>
               </div>
             </div>
           </>
