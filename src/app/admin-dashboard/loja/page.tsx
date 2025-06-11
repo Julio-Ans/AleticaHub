@@ -5,13 +5,23 @@ import { useEffect, useState } from 'react';
 type Produto = {
   id: string;
   nome: string;
+  descricao: string;
   preco: number;
   estoque: number;
+  imagemUrl: string;
+  tamanho?: string;
 };
 
 export default function LojaAdminPage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [form, setForm] = useState({ nome: '', preco: '', estoque: '' });
+  const [form, setForm] = useState({
+    nome: '',
+    descricao: '',
+    preco: '',
+    estoque: '',
+    imagem: null as File | null,
+    tamanho: ''
+  });
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,43 +31,58 @@ export default function LojaAdminPage() {
       .catch(console.error);
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, files } = e.target as HTMLInputElement;
+    if (name === 'imagem' && files) {
+      setForm({ ...form, imagem: files[0] });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const limparFormulario = () => {
-    setForm({ nome: '', preco: '', estoque: '' });
+    setForm({ nome: '', descricao: '', preco: '', estoque: '', imagem: null, tamanho: '' });
     setEditandoId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let imagemUrl = '';
+
+    if (form.imagem) {
+      const formData = new FormData();
+      formData.append('file', form.imagem);
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      imagemUrl = uploadData.url;
+    }
+
     const produto = {
       nome: form.nome,
+      descricao: form.descricao,
       preco: parseFloat(form.preco),
       estoque: parseInt(form.estoque),
+      imagemUrl,
+      tamanho: form.tamanho || undefined,
     };
 
     if (editandoId) {
-      // Atualizar produto existente
       const res = await fetch(`/api/produtos/${editandoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(produto),
       });
-
       const atualizado = await res.json();
-      setProdutos(prev =>
-        prev.map(p => (p.id === atualizado.id ? atualizado : p))
-      );
+      setProdutos(prev => prev.map(p => (p.id === atualizado.id ? atualizado : p)));
     } else {
-      // Criar novo produto
       const res = await fetch('/api/produtos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(produto),
       });
-
       const criado = await res.json();
       setProdutos([...produtos, criado]);
     }
@@ -69,8 +94,11 @@ export default function LojaAdminPage() {
     setEditandoId(produto.id);
     setForm({
       nome: produto.nome,
+      descricao: produto.descricao,
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
+      imagem: null,
+      tamanho: produto.tamanho || ''
     });
   };
 
@@ -97,6 +125,16 @@ export default function LojaAdminPage() {
           required
           className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
         />
+
+        <textarea
+          name="descricao"
+          placeholder="Descrição do produto"
+          value={form.descricao}
+          onChange={handleChange}
+          required
+          className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
+        />
+
         <input
           type="number"
           name="preco"
@@ -107,6 +145,7 @@ export default function LojaAdminPage() {
           step="0.01"
           className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
         />
+
         <input
           type="number"
           name="estoque"
@@ -114,6 +153,24 @@ export default function LojaAdminPage() {
           value={form.estoque}
           onChange={handleChange}
           required
+          className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
+        />
+
+        <input
+          type="text"
+          name="tamanho"
+          placeholder="Tamanho (opcional)"
+          value={form.tamanho}
+          onChange={handleChange}
+          className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
+        />
+
+        <input
+          type="file"
+          name="imagem"
+          accept="image/*"
+          onChange={handleChange}
+          required={!editandoId}
           className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
         />
 
@@ -129,7 +186,6 @@ export default function LojaAdminPage() {
         </div>
       </form>
 
-      {/* Lista de produtos */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-red-500">Produtos Cadastrados</h2>
         {produtos.length === 0 ? (

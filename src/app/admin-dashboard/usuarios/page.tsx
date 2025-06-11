@@ -165,7 +165,7 @@ export default function AdminUsuariosPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <div className="flex items-center">
-              <Users className="w-8 h-8 text-blue-500 mr-3" />
+              <Users className="w-8 h-8 text-red-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-400">Total de Usuários</p>
                 <p className="text-2xl font-bold text-white">{totalUsuarios}</p>
@@ -175,7 +175,7 @@ export default function AdminUsuariosPage() {
           
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <div className="flex items-center">
-              <Clock className="w-8 h-8 text-yellow-500 mr-3" />
+              <Clock className="w-8 h-8 text-red-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-400">Pendentes</p>
                 <p className="text-2xl font-bold text-white">{usuariosPendentes}</p>
@@ -185,7 +185,7 @@ export default function AdminUsuariosPage() {
           
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <div className="flex items-center">
-              <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
+              <CheckCircle className="w-8 h-8 text-red-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-400">Ativos</p>
                 <p className="text-2xl font-bold text-white">{usuariosAtivos}</p>
@@ -195,7 +195,7 @@ export default function AdminUsuariosPage() {
           
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <div className="flex items-center">
-              <Shield className="w-8 h-8 text-purple-500 mr-3" />
+              <Shield className="w-8 h-8 text-red-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-400">Administradores</p>
                 <p className="text-2xl font-bold text-white">{totalAdmins}</p>
