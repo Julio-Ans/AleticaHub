@@ -110,7 +110,7 @@ export default function LojaAdminPage() {
         <input
           type="number"
           name="estoque"
-          placeholder="Estoque"
+          placeholder="Quantidade de estoque"
           value={form.estoque}
           onChange={handleChange}
           required
