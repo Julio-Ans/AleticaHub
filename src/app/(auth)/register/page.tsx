@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { authApi } from '@/services/api/authApi';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -44,7 +45,6 @@ export default function RegisterPage() {
 
     return true;
   };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,35 +54,22 @@ export default function RegisterPage() {
     setIsLoading(true);
     setError('');
     
-    const { email, senha, nome, telefone, dataNascimento, curso, codigo } = formData;    try {
-      const response = await fetch('http://localhost:3000/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email, 
-          password: senha, 
-          nome, 
-          telefone, 
-          dataNascimento, 
-          curso,
-          codigo: codigo || undefined // Envia apenas se não estiver vazio
-        }),
+    const { email, senha, nome, telefone, dataNascimento, curso, codigo } = formData;
+
+    try {
+      console.log('Iniciando registro...');
+      
+      const data = await authApi.register({
+        email,
+        password: senha,
+        nome,
+        telefone,
+        dataNascimento,
+        curso,
+        codigo: codigo || undefined
       });
 
-      if (!response.ok) {
-        let errorMsg = 'Erro ao registrar usuário';
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.error) errorMsg = errorData.error;
-        } catch {}
-        throw new Error(errorMsg);
-      }      const data = await response.json();
       console.log('Registro bem-sucedido:', data);
-      
-      // Armazenar o token JWT retornado pelo backend para futuras requisições
-      localStorage.setItem('authToken', data.token);
       
       // Redirecionar com base no papel do usuário
       if (data.user.role === 'admin') {
