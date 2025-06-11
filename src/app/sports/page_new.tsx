@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function SportsPage() {
   const { esportes, isLoading, error } = useEsportes();
   const { criarInscricao, getStatusInscricao } = useInscricoes();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [inscrevendoId, setInscrevendoId] = useState<string | number | null>(null);
 
   const handleInscrever = async (esporteId: string | number) => {

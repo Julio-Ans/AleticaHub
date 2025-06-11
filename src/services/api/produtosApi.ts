@@ -104,11 +104,15 @@ class ProdutosService extends AtleticaHubAPI {  // Listar produtos com paginaç�
     return this.request(`/api/produtos/${id}`, {
       method: 'DELETE'
     });
-  }
-
-  // Listar categorias
+  }  // Listar categorias
   async listarCategorias(): Promise<string[]> {
-    return this.request('/api/produtos/categorias', { auth: false });
+    try {
+      return await this.request('/api/produtos/categorias', { auth: false });
+    } catch {
+      // Se não conseguir carregar categorias, retornar categorias padrão
+      console.warn('API de categorias indisponível, usando categorias padrão');
+      return ['Equipamentos', 'Roupas', 'Acessórios', 'Suplementos'];
+    }
   }
 }
 

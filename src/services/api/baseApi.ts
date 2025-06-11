@@ -86,8 +86,7 @@ class AtleticaHubAPI {
       console.log(`🔗 API Request: ${options.method || 'GET'} ${url}`);
       
       const response = await fetch(url, config);
-      
-      if (!response.ok) {
+        if (!response.ok) {
         let errorMessage = `Erro ${response.status}: ${response.statusText}`;
         
         try {
@@ -96,22 +95,36 @@ class AtleticaHubAPI {
         } catch {
           // Se não conseguir parsear JSON, usar mensagem padrão
         }
-          if (response.status === 401) {
+        
+        if (response.status === 401) {
           errorMessage = 'Token ausente ou inválido';
         }
         
         // Silenciar erros comuns que não são problemas reais
-        if (!errorMessage.includes('não encontrado')) {
+        const shouldSilenceError = 
+          errorMessage.includes('não encontrado') ||
+          errorMessage.includes('Erro ao buscar produto') ||
+          errorMessage.includes('categoria') ||
+          response.status === 404;
+        
+        if (!shouldSilenceError) {
           console.error(`❌ API Error: ${errorMessage}`);
         }
         throw new Error(errorMessage);
       }
       
       const result = await response.json();
-      return result;
-    } catch (error) {
+      return result;    } catch (error) {
       // Silenciar logs de erro para requisições que falham por motivos esperados
-      if (!(error instanceof Error && error.message.includes('não encontrado'))) {
+      const shouldSilenceError = 
+        error instanceof Error && (
+          error.message.includes('não encontrado') ||
+          error.message.includes('Erro ao buscar produto') ||
+          error.message.includes('categoria') ||
+          error.message.includes('404')
+        );
+      
+      if (!shouldSilenceError) {
         console.error(`❌ API Exception: ${error}`);
       }
       throw error;

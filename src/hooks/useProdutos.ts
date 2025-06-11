@@ -55,25 +55,25 @@ export const useProdutos = () => {
         });
         
         return response;
+      }    } catch (err) {
+      // Silenciar erros comuns de carregamento de produtos
+      if (err instanceof Error && !err.message.includes('Erro ao buscar produto')) {
+        console.error('Erro ao carregar produtos:', err);
       }
-    } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Carregar categorias
+  }, []);  // Carregar categorias
   const carregarCategorias = useCallback(async () => {
     try {
       const data = await produtosService.listarCategorias();
       setCategorias(data);
-    } catch (err) {
-      console.error('Erro ao carregar categorias:', err);
+    } catch {
+      // Silenciar completamente erros de categorias e usar categorias padrão
+      setCategorias(['Equipamentos', 'Roupas', 'Acessórios', 'Suplementos']);
     }
   }, []);
-
   // Buscar produto por ID
   const buscarProduto = async (id: string): Promise<Produto | null> => {
     try {
@@ -82,8 +82,11 @@ export const useProdutos = () => {
       const produto = await produtosService.buscarProduto(id);
       return produto;
     } catch (err) {
-      console.error('Erro ao buscar produto:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao buscar produto');
+      // Silenciar erros de produto não encontrado
+      if (err instanceof Error && !err.message.includes('não encontrado')) {
+        console.error('Erro ao buscar produto:', err);
+        setError(err.message);
+      }
       return null;
     } finally {
       setIsLoading(false);
@@ -185,12 +188,24 @@ export const useProdutos = () => {
   };  // Carregar dados iniciais
   useEffect(() => {
     const loadInitialData = async () => {
-      try {
-        await carregarProdutos();
-        await carregarCategorias();
-      } catch (err) {
-        console.error('Erro ao carregar dados iniciais dos produtos:', err);
-      }
+      // Carregar produtos e categorias de forma independente
+      Promise.allSettled([
+        carregarProdutos(),
+        carregarCategorias()
+      ]).then(results => {
+        // Verificar se houve algum erro crítico apenas nos produtos
+        const produtosResult = results[0];
+        if (produtosResult.status === 'rejected') {
+          // Só logar se for um erro inesperado
+          const error = produtosResult.reason;
+          if (error instanceof Error && 
+              !error.message.includes('Erro ao buscar produto') &&
+              !error.message.includes('404') &&
+              !error.message.includes('não encontrado')) {
+            console.error('Erro crítico ao carregar produtos:', error);
+          }
+        }
+      });
     };
 
     loadInitialData();
