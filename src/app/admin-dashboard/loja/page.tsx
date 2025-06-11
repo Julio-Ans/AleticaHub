@@ -1,110 +1,105 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useProdutos } from '@/hooks/useProdutos';
+import { produtosService } from '@/services/api';
 
-type Produto = {
-  id: string;
-  nome: string;
-  descricao: string;
-  preco: number;
-  estoque: number;
-  imagemUrl: string;
-  tamanho?: string;
-};
+
 
 export default function LojaAdminPage() {
-  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const {
+    produtos,
+    criarProduto,
+    atualizarProduto,
+    excluirProduto,
+    isAdmin,
+    error,
+    carregarProdutos
+  } = useProdutos();
+
   const [form, setForm] = useState({
     nome: '',
     descricao: '',
     preco: '',
     estoque: '',
-    imagem: null as File | null,
-    tamanho: ''
+    tamanho: '',
+    foto: null as File | null,
   });
+
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/produtos')
-      .then(res => res.json())
-      .then(setProdutos)
-      .catch(console.error);
-  }, []);
+    carregarProdutos();
+  }, [carregarProdutos]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, files } = e.target as HTMLInputElement;
-    if (name === 'imagem' && files) {
-      setForm({ ...form, imagem: files[0] });
+    if (name === 'foto' && files) {
+      setForm({ ...form, foto: files[0] });
     } else {
       setForm({ ...form, [name]: value });
     }
   };
 
   const limparFormulario = () => {
-    setForm({ nome: '', descricao: '', preco: '', estoque: '', imagem: null, tamanho: '' });
+    setForm({ nome: '', descricao: '', preco: '', estoque: '', tamanho: '', foto: null });
     setEditandoId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    let imagemUrl = '';
+  e.preventDefault();
 
-    if (form.imagem) {
-      const formData = new FormData();
-      formData.append('file', form.imagem);
-      const uploadRes = await fetch('/api/upload', {
+  const formData = new FormData();
+  formData.append('nome', form.nome);
+  formData.append('descricao', form.descricao);
+  formData.append('preco', form.preco);
+  formData.append('estoque', form.estoque);
+  formData.append('categoria', 'geral');
+  if (form.foto) {
+    formData.append('foto', form.foto);
+  }
+
+  try {
+    if (editandoId) {
+      await atualizarProduto(editandoId, {
+        nome: form.nome,
+        descricao: form.descricao,
+        preco: parseFloat(form.preco),
+        estoque: parseInt(form.estoque),
+        categoria: 'geral'
+      });
+    } else {
+      await produtosService.request('/api/produtos', {
         method: 'POST',
         body: formData,
+        headers: await produtosService.getHeaders(), 
       });
-      const uploadData = await uploadRes.json();
-      imagemUrl = uploadData.url;
+      await carregarProdutos();
     }
-
-    const produto = {
-      nome: form.nome,
-      descricao: form.descricao,
-      preco: parseFloat(form.preco),
-      estoque: parseInt(form.estoque),
-      imagemUrl,
-      tamanho: form.tamanho || undefined,
-    };
-
-    if (editandoId) {
-      const res = await fetch(`/api/produtos/${editandoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(produto),
-      });
-      const atualizado = await res.json();
-      setProdutos(prev => prev.map(p => (p.id === atualizado.id ? atualizado : p)));
-    } else {
-      const res = await fetch('/api/produtos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(produto),
-      });
-      const criado = await res.json();
-      setProdutos([...produtos, criado]);
-    }
-
     limparFormulario();
-  };
+  } catch (error) {
+    console.error('Erro ao salvar produto:', error);
+  }
+};
 
-  const iniciarEdicao = (produto: Produto) => {
+  const iniciarEdicao = (produto: any) => {
     setEditandoId(produto.id);
     setForm({
       nome: produto.nome,
       descricao: produto.descricao,
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
-      imagem: null,
-      tamanho: produto.tamanho || ''
+      tamanho: produto.tamanho || '',
+      foto: null
     });
   };
 
-  const excluirProduto = async (id: string) => {
-    await fetch(`/api/produtos/${id}`, { method: 'DELETE' });
-    setProdutos(produtos.filter(p => p.id !== id));
+  const handleExcluir = async (id: string) => {
+    try {
+      await excluirProduto(id);
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error);
+    }
   };
 
   return (
@@ -167,7 +162,7 @@ export default function LojaAdminPage() {
 
         <input
           type="file"
-          name="imagem"
+          name="foto"
           accept="image/*"
           onChange={handleChange}
           required={!editandoId}
@@ -198,8 +193,8 @@ export default function LojaAdminPage() {
                 <p className="text-gray-400">R$ {prod.preco.toFixed(2)} • Estoque: {prod.estoque}</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => iniciarEdicao(prod)} className="text-blue-400 hover:text-blue-300">Editar</button>
-                <button onClick={() => excluirProduto(prod.id)} className="text-red-500 hover:text-red-400">Excluir</button>
+                <button onClick={() => iniciarEdicao(prod)} className="text-red-400 hover:text-red-300">Editar</button>
+                <button onClick={() => handleExcluir(prod.id.toString())} className="text-red-500 hover:text-red-400">Excluir</button>
               </div>
             </div>
           ))
